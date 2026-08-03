@@ -1,0 +1,11 @@
+# Build artifacts
+obj/
+bin/**/*.o
+bin/**/*.elf
+bin/**/*.PBP
+bin/**/*.a
+
+# Editor
+*.swp
+*.swo
+*~

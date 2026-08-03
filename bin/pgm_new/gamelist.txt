@@ -1,0 +1,52 @@
+This list contains all games supported by FB Alpha.
+
+45 games supported in total; X = excluded from build; D = included in debug build only; NW = not working
+
+  name		  status  full name						  parent	  year	  company	  hardware	  remarks
++---------------+-------+-------------------------------------------------------+---------------+-------+---------------+---------------+---------------------------------------+
+| ddp2		|   NW	| Bee Storm - DoDonPachi II (ver. 100)			| 		| 2001	| IGS		| PGM		| Not working				|
+| ddp2102	|   NW	| Bee Storm - DoDonPachi II (ver. 102)			| ddp2		| 2001	| IGS		| PGM		| Not working				|
+| drgw2j	|  	| Chuugokuryuu II (ver. 100J, Japan)			| drgw2		| 1997	| IGS		| PGM		| 					|
+| dmnfrnt	|   NW	| Demon Front (ver. 102)				| 		| 2002	| IGS		| PGM		| Not working				|
+| dmnfrnta	|   NW	| Demon Front (ver. 105)				| dmnfrnt	| 2002	| IGS		| PGM		| Not working				|
+| drgw3		|   NW	| Dragon World 3 (ver. 100J)				| 		| 1998	| IGS		| PGM		| Not working				|
+| drgw3k	|   NW	| Dragon World 3 (ver. 106, Korean Board)		| drgw3		| 1998	| IGS		| PGM		| Not working				|
+| drgw2		|  	| Dragon World II (ver. 110X, Export)			| 		| 1997	| IGS		| PGM		| 					|
+| pgmfrog	|  	| Frog Feast (Homebrew)					| 		| 2006	| Rastersoft / C| PGM		| 					|
+| kovj		|  	| Knights of Valour / Sangoku Senki (ver. 100, Japanese | kov		| 1999	| IGS		| PGM		| 					|
+| kov115	|  	| Knights of Valour / Sangoku Senki (ver. 115)		| kov		| 1999	| IGS		| PGM		| 					|
+| kov		|  	| Knights of Valour / Sangoku Senki (ver. 117)		| 		| 1999	| IGS		| PGM		| 					|
+| kov2		|  	| Knights of Valour 2 / Sangoku Senki 2 (ver. 100)	| 		| 2000	| IGS		| PGM		| 					|
+| kov2106	|   NW	| Knights of Valour 2 / Sangoku Senki 2 (ver. 106)	| kov2		| 2000	| IGS		| PGM		| Not working				|
+| kov2p		|  	| Knights of Valour 2 Plus - Nine Dragons / Sangoku Senk| kov2		| 2000	| IGS		| PGM		| 					|
+| kov2p205	|  	| Knights of Valour 2 Plus - Nine Dragons / Sangoku Senk| kov2		| 2002	| IGS		| PGM		| 					|
+| kovplusa	|  	| Knights of Valour Plus / Sangoku Senki Plus (alt ver. | kov		| 1999	| IGS		| PGM		| 					|
+| kovplus	|  	| Knights of Valour Plus / Sangoku Senki Plus (ver. 119)| kov		| 1999	| IGS		| PGM		| 					|
+| kovsh		|  	| Knights of Valour Super Heroes / Sangoku Senki Super H| kov		| 1999	| IGS		| PGM		| 					|
+| kovshp	|  	| Knights of Valour Super Heroes Plus / Sangoku Senki Su| kov		| 2004	| IGS		| PGM		| 					|
+| martmasc	|  	| Martial Masters (China, ver. 101)			| martmast	| 2001	| IGS		| PGM		| 					|
+| martmast	|  	| Martial Masters (USA, ver. 102)			| 		| 2001	| IGS		| PGM		| 					|
+| orld105k	|  	| Oriental Legend / Xi You Shi E Zhuan (ver. 105, Korean| orlegend	| 1997	| IGS		| PGM		| 					|
+| orld111c	|  	| Oriental Legend / Xi You Shi E Zhuan (ver. 111, Chines| orlegend	| 1997	| IGS		| PGM		| 					|
+| orlegnde	|  	| Oriental Legend / Xi You Shi E Zhuan (ver. 112)	| orlegend	| 1997	| IGS		| PGM		| 					|
+| orlegndc	|  	| Oriental Legend / Xi You Shi E Zhuan (ver. 112, Chines| orlegend	| 1997	| IGS		| PGM		| 					|
+| orlegend	|  	| Oriental Legend / Xi You Shi E Zhuan (ver. 126)	| 		| 1997	| IGS		| PGM		| 					|
+| olds100a	|  	| Oriental Legend Special / Xi You Shi E Zhuan Super (al| olds		| 1998	| IGS		| PGM		| 					|
+| olds100	|  	| Oriental Legend Special / Xi You Shi E Zhuan Super (ve| olds		| 1998	| IGS		| PGM		| 					|
+| olds		|  	| Oriental Legend Special / Xi You Shi E Zhuan Super (ve| 		| 1998	| IGS		| PGM		| 					|
+| oldsplus	|   NW	| Oriental Legend Special Plus / Xi You Shi E Zhuan Supe| 		| 2004	| IGS		| PGM		| 					|
+| pgemeni	|  	| P-GeMeni (060123)					| 		| 2006	| blastar@gmx.ne| PGM		| Homebrew Game				|
+| pgm		|   NW	| PGM (Polygame Master) System BIOS			| 		| 1997	| IGS		| PGM		| BIOS only				|
+| pgmdemo	|  	| PGM Demo (Homebrew)					| 		| 2005	| Rastersoft / C| PGM		| Demo Game				|
+| photoy2k	|  	| Photo Y2K / Real and Fake (ver. 104)			| 		| 1999	| IGS		| PGM		| 					|
+| puzlstar	|  	| Puzzle Star (ver. 100MG)				| 		| 1999	| IGS		| PGM		| 					|
+| puzzli2	|   NW	| Puzzli 2 Super (ver. 200)				| 		| 2001	| IGS		| PGM		| Not working				|
+| raf102j	|  	| Real and Fake / Photo Y2K (ver. 102, Japanese Board)	| photoy2k	| 1999	| IGS		| PGM		| 					|
+| svg		|   NW	| S.V.G. - Spectral vs Generation (ver. 200)		| 		| 2005	| IGS		| PGM		| 					|
+| theglad	|   NW	| The Gladiator (ver. 100)				| 		| 2003	| IGS		| PGM		| Not working				|
+| theglada	|   NW	| The Gladiator (ver. 101)				| theglad	| 2003	| IGS		| PGM		| Not working				|
+| killbld	|   NW	| The Killing Blade (ver. 104)				| 		| 1998	| IGS		| PGM		| Not working				|
+| killbldt	|  	| The Killing Blade (ver. 109, Chinese Board)		| killbld	| 1998	| IGS		| PGM		| 					|
+| killbldp	|   NW	| The Killing Blade Plus				| 		| 2005	| IGS		| PGM		| 					|
+| drgw2c	|  	| Zhong Guo Long II (ver. 100C, China)			| drgw2		| 1997	| IGS		| PGM		| 					|
++---------------+-------+-------------------------------------------------------+---------------+-------+---------------+---------------+---------------------------------------+
