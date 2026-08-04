@@ -213,6 +213,7 @@ enum uiMainIndex
 	RESET_GAME,
 	SCREEN_SHOT,
 	CONTROLLER,
+	SKIP_FRAMES,
 	WIFI_GAME,
 	SYNC_GAME,
 	SERVICE_MODE,
@@ -225,10 +226,11 @@ static char *ui_main_menu[] = {
 	"Reset Game ",
 	"Screen Shot ",
 	"Controller: %1uP ",
+	"Frame Skip: %1u",
 	"Wifi Game: %s ",
 	"P2P Sync Game ",
 	"Service Mode",
-	"Exit Game"	
+	"Exit Game"
 };
 
 static void update_status_str(char *batt_str)
@@ -257,7 +259,13 @@ static void update_status_str(char *batt_str)
 		}
 
 	strcat(batt_str, batt_life_str);
-}
+	}
+	
+
+
+#define UI_VISIBLE_ITEMS 7
+#define UI_HIGHLIGHT_POS 3
+
 void draw_ui_main()
 {
 	char buf[320];
@@ -266,7 +274,7 @@ void draw_ui_main()
 		if(access("bg1.png",0)==0)
 		{
 			loadImage(bgBuf,"bg1.png", &bgW, &bgH);
-			bgIndex=1;				
+			bgIndex=1;
 		}
 	}
 	if(bgIndex!=1)
@@ -274,82 +282,74 @@ void draw_ui_main()
 		drawRect(GU_FRAME_ADDR(work_frame), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, UI_BGCOLOR);
 	}else
 	{
-		drawImage(GU_FRAME_ADDR(work_frame), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 
+		drawImage(GU_FRAME_ADDR(work_frame), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
 			(unsigned short*)bgBuf, bgW, bgH);
 	}
-	
+
 	drawString(LBVer, GU_FRAME_ADDR(work_frame), 10, 10, UI_COLOR);
 	update_status_str(buf);
 	drawString(buf, GU_FRAME_ADDR(work_frame), 470 - getDrawStringLength(buf), 10, UI_COLOR);
-    drawRect(GU_FRAME_ADDR(work_frame), 8, 28, 464, 1, UI_COLOR);
-    
-        
-    for(int i=0; i<MENU_COUNT; i++)  {
-	    	    
-	    switch ( i ) {
-	    
-	    case LOAD_GAME:
-	    	sprintf( buf, ui_main_menu[i],saveIndex );
+	drawRect(GU_FRAME_ADDR(work_frame), 8, 28, 464, 1, UI_COLOR);
+
+	int yTop = 44;
+	int itemH = 18;
+	int start = (ui_mainmenu_select - UI_HIGHLIGHT_POS + MENU_COUNT * 10) % MENU_COUNT;
+
+	for (int v = 0; v < UI_VISIBLE_ITEMS; v++) {
+		int i = (start + v) % MENU_COUNT;
+		switch ( i ) {
+		case LOAD_GAME:
+			sprintf( buf, ui_main_menu[i], saveIndex );
 			break;
 		case SAVE_GAME:
-	    	sprintf( buf, ui_main_menu[i],saveIndex );
+			sprintf( buf, ui_main_menu[i], saveIndex );
 			break;
-	    case CONTROLLER:
-	    	if(currentInp)
-	    		sprintf( buf, ui_main_menu[i],currentInp );
-	    	else
-	    		strcpy(buf,"Controller: ALL");
+		case CONTROLLER:
+			if(currentInp)
+				sprintf( buf, ui_main_menu[i], currentInp );
+			else
+				strcpy(buf, "Controller: ALL");
+			break;
+		case SKIP_FRAMES:
+			sprintf( buf, ui_main_menu[i], gameSpeedCtrl );
 			break;
 		case WIFI_GAME:
 			switch(wifiStatus)
 			{
-				case 1:
-					sprintf( buf, ui_main_menu[i], "HOST" );
-					break;
-				case 2:
-					sprintf( buf, ui_main_menu[i], "CLIENT" );
-					break;
-				case 3:
-					sprintf( buf, ui_main_menu[i], "P2P" );
-					break;
-				default:
-					sprintf( buf, ui_main_menu[i], "OFF" );
-					break;
+				case 1: sprintf( buf, ui_main_menu[i], "HOST" ); break;
+				case 2: sprintf( buf, ui_main_menu[i], "CLIENT" ); break;
+				case 3: sprintf( buf, ui_main_menu[i], "P2P" ); break;
+				default: sprintf( buf, ui_main_menu[i], "OFF" ); break;
 			}
 			break;
-	    default:
-	    	sprintf( buf, ui_main_menu[i]);
-    	}
-    	drawString(buf, 
-	    			GU_FRAME_ADDR(work_frame), 
-	    			130,
-	    			44 + i * 18, UI_COLOR);
+		default:
+			sprintf( buf, ui_main_menu[i] );
+		}
+		drawString(buf, GU_FRAME_ADDR(work_frame), 160,
+			yTop + v * itemH + 3,
+			i == EXIT_FBA ? R8G8B8_to_B5G6R5(0xff0000) : UI_COLOR);
 	}
-	drawRect(GU_FRAME_ADDR(work_frame), 122, 40+ui_mainmenu_select*18, 236, 18, UI_COLOR,0x40);
-	
-    drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
-    //drawString("FB Alpha contains parts of MAME & Final Burn. (C) 2004, Team FB Alpha.", GU_FRAME_ADDR(work_frame), 10, 238, UI_COLOR);
-    //drawString("FinalBurn Alpha for PSP (C) 2008, OopsWare and LBICELYNE", GU_FRAME_ADDR(work_frame), 10, 255, UI_COLOR);
-	
-	//Draw preview
+	/* Highlight bar fixed at center position */
+	drawRect(GU_FRAME_ADDR(work_frame), 152, yTop + UI_HIGHLIGHT_POS * itemH,
+		180, itemH, UI_COLOR, 0x40);
+
+	drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
+
 	if(0&&ui_mainmenu_select==LOAD_GAME&&needPreview&&nBurnDrvSelect < nBurnDrvCount)
 	{
-	    strcpy(buf,szAppCachePath);
+		strcpy(buf,szAppCachePath);
 		strcat(buf,BurnDrvGetTextA(DRV_NAME));
-		sprintf(buf+300,"_%1u.png",saveIndex);	
+		sprintf(buf+300,"_%1u.png",saveIndex);
 		strcat(buf,buf+300);
-		
 		if(access(buf,0)==0)
 		{
 			unsigned int imgW,imgH;
 			loadImage(previewBuf,buf, &imgW, &imgH);
-			drawImage(GU_FRAME_ADDR(work_frame), 80, 90, 320, 180, 
+			drawImage(GU_FRAME_ADDR(work_frame), 80, 90, 320, 180,
 			(unsigned short*)previewBuf, imgW, imgH);
 		}
 	}
-	
 }
-
 void draw_ui_browse(bool rebuiltlist)
 {
 	unsigned int bds = nBurnDrvSelect;
@@ -528,6 +528,11 @@ static void process_key( int key, int down, int repeat )
 				}
 				draw_ui_main();
 				break;
+				case SKIP_FRAMES:
+					if (gameSpeedCtrl > 0)
+						gameSpeedCtrl--;
+					draw_ui_main();
+					break;
 			default:
 				break;
 			}
@@ -557,6 +562,11 @@ static void process_key( int key, int down, int repeat )
 				}
 				draw_ui_main();
 				break;
+				case SKIP_FRAMES:
+					if (gameSpeedCtrl < 8)
+						gameSpeedCtrl++;
+					draw_ui_main();
+					break;
 			default:
 				break;
 			}
@@ -644,7 +654,6 @@ static void process_key( int key, int down, int repeat )
 			case SERVICE_MODE:
 				if(nPrevGame != ~0U)
 				{
-					InpForceTestMode();
 					DrvExit();
 					scePowerSetClockFrequency(
 							cpu_speeds[cpu_speeds_select].cpu,
@@ -654,8 +663,9 @@ static void process_key( int key, int down, int repeat )
 						BurnRecalcPal();
 						InpInit();
 						InpDIP();
-						return_to_game();
+						InpForceTestMode();
 						InpStartAutoClear();
+						return_to_game();
 					}
 				}
 				break;

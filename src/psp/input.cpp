@@ -655,19 +655,8 @@ void InpForceTestMode()
 	if (nDIPGameInp < 0 || nDIPGameInp >= (int)nGameInpCount) return;
 	if (!GameInp[nDIPGameInp].pVal) return;
 
-	unsigned char dipVal = *(GameInp[nDIPGameInp].pVal) | 0x01;
-
-	struct BurnInputInfo bii;
-	memset(&bii, 0, sizeof(bii));
-	BurnDrvGetInputInfo(&bii, nDIPGameInp);
-
-	char path[256];
-	sprintf(path, "roms/%s.ini", BurnDrvGetTextA(DRV_NAME));
-	FILE* fp = fopen(path, "w");
-	if (fp) {
-		fprintf(fp, "\"%s\" constant 0x%02X\n", bii.szName, dipVal);
-		fclose(fp);
-	}
+	*(GameInp[nDIPGameInp].pVal)   |= 0x01;
+	GameInp[nDIPGameInp].nConst = *(GameInp[nDIPGameInp].pVal);
 }
 
 void InpClearTestMode()
@@ -696,24 +685,9 @@ void InpClearTestMode()
 	if (nDIPGameInp < 0 || nDIPGameInp >= (int)nGameInpCount) return;
 	if (!GameInp[nDIPGameInp].pVal) return;
 
-	// Clear Test Mode bit in memory AND nConst
-	*(GameInp[nDIPGameInp].pVal) &= ~0x01;
+	*(GameInp[nDIPGameInp].pVal)   &= ~0x01;
 	GameInp[nDIPGameInp].nConst = *(GameInp[nDIPGameInp].pVal);
-
-	// Also write INI with Test Mode cleared
-	struct BurnInputInfo bii;
-	memset(&bii, 0, sizeof(bii));
-	BurnDrvGetInputInfo(&bii, nDIPGameInp);
-
-	char path[256];
-	sprintf(path, "roms/%s.ini", BurnDrvGetTextA(DRV_NAME));
-	FILE* fp = fopen(path, "w");
-	if (fp) {
-		fprintf(fp, "\"%s\" constant 0x%02X\n", bii.szName, GameInp[nDIPGameInp].nConst);
-		fclose(fp);
-	}
 }
-
 
 void InpStartAutoClear()
 {

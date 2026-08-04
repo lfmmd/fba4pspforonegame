@@ -1684,7 +1684,7 @@ void install_protection_asic27a_kovshp()
 	pPgmResetCallback = kovshp_asic27a_reset;
 
 	SekOpen(0);
-	SekMapMemory(PGMARMShareRAM,	0x4f0000, 0x4f003f, SM_RAM);
+	SekMapMemory(PGMARMShareRAM,	0x4f0000, 0x4f003f, SM_READ);
 
 	SekMapHandler(4,				0x500000, 0x600005, SM_READ | SM_WRITE);
 	SekSetReadWordHandler(4, 		kovshp_asic27a_read_word);
