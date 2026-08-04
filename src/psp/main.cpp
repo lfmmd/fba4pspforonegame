@@ -40,6 +40,7 @@ unsigned int debugValue[2]={0,};
 
 void returnToMenu()
 {
+	InpClearTestMode();
 	scePowerSetClockFrequency(222, 222, 111);
 	setGameStage(1);
 	sound_pause();

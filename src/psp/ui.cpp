@@ -215,6 +215,7 @@ enum uiMainIndex
 	CONTROLLER,
 	WIFI_GAME,
 	SYNC_GAME,
+	SERVICE_MODE,
 	EXIT_FBA,
 	MENU_COUNT
 };
@@ -226,6 +227,7 @@ static char *ui_main_menu[] = {
 	"Controller: %1uP ",
 	"Wifi Game: %s ",
 	"P2P Sync Game ",
+	"Service Mode",
 	"Exit Game"	
 };
 
@@ -320,10 +322,10 @@ void draw_ui_main()
     	}
     	drawString(buf, 
 	    			GU_FRAME_ADDR(work_frame), 
-	    			80+240*(i/10),
-	    			44 + (i%10) * 18, UI_COLOR);
+	    			130,
+	    			44 + i * 18, UI_COLOR);
 	}
-	drawRect(GU_FRAME_ADDR(work_frame), 2+240*(ui_mainmenu_select/10), 40+(ui_mainmenu_select%10)*18, 236, 18, UI_COLOR,0x40);
+	drawRect(GU_FRAME_ADDR(work_frame), 122, 40+ui_mainmenu_select*18, 236, 18, UI_COLOR,0x40);
 	
     drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
     //drawString("FB Alpha contains parts of MAME & Final Burn. (C) 2004, Team FB Alpha.", GU_FRAME_ADDR(work_frame), 10, 238, UI_COLOR);
@@ -527,11 +529,6 @@ static void process_key( int key, int down, int repeat )
 				draw_ui_main();
 				break;
 			default:
-				if(ui_mainmenu_select>=10)
-					ui_mainmenu_select=ui_mainmenu_select-10;
-				else
-					ui_mainmenu_select=ui_mainmenu_select+10;
-				draw_ui_main();
 				break;
 			}
 			break;
@@ -561,11 +558,6 @@ static void process_key( int key, int down, int repeat )
 				draw_ui_main();
 				break;
 			default:
-				if(ui_mainmenu_select>=10)
-					ui_mainmenu_select=ui_mainmenu_select-10;
-				else
-					ui_mainmenu_select=ui_mainmenu_select+10;
-				draw_ui_main();
 				break;
 			}
 			break;
@@ -647,6 +639,24 @@ static void process_key( int key, int down, int repeat )
 				{					
 						return_to_game();
 						sendSyncGame();
+				}
+				break;
+			case SERVICE_MODE:
+				if(nPrevGame != ~0U)
+				{
+					InpForceTestMode();
+					DrvExit();
+					scePowerSetClockFrequency(
+							cpu_speeds[cpu_speeds_select].cpu,
+							cpu_speeds[cpu_speeds_select].cpu,
+							cpu_speeds[cpu_speeds_select].bus );
+					if (DrvInit(nPrevGame, false) == 0) {
+						BurnRecalcPal();
+						InpInit();
+						InpDIP();
+						return_to_game();
+						InpStartAutoClear();
+					}
 				}
 				break;
 			case EXIT_FBA:	// Exit

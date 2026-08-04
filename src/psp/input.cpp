@@ -1,6 +1,9 @@
 #include "burnint.h"
 #include "psp.h"
 #include "pspadhoc.h"
+
+static int nAutoSaveCountdown = 0;
+
 struct GameInp {
 	unsigned char *pVal;  // Destination for the Input Value
 	unsigned char nType;  // 0=binary (0,1) 1=analog (0x01-0xFF) 2=dip switch
@@ -482,6 +485,12 @@ int InpMake(unsigned int key)
 			*(GameInp[i].pVal) = GameInp[i].nConst;
 		}
 	}
+	if (nAutoSaveCountdown > 0) {
+		nAutoSaveCountdown--;
+		if (nAutoSaveCountdown == 0) {
+			InpClearTestMode();
+		}
+	}
 	return 0;
 }
 
@@ -620,3 +629,93 @@ void InpDIP()
 #endif
 }
 
+void InpForceTestMode()
+{
+	if (!GameInp || nBurnDrvSelect >= nBurnDrvCount) return;
+
+	struct BurnDIPInfo bdi;
+	int nDIPGameInp = -1;
+	int nDIPOffset = 0;
+	int i;
+
+	for (i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+		if (bdi.nFlags == 0xF0) {
+			nDIPOffset = bdi.nInput;
+			break;
+		}
+	}
+
+	for (i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+		if (bdi.nFlags == 0xFF) {
+			nDIPGameInp = bdi.nInput + nDIPOffset;
+			break;
+		}
+	}
+
+	if (nDIPGameInp < 0 || nDIPGameInp >= (int)nGameInpCount) return;
+	if (!GameInp[nDIPGameInp].pVal) return;
+
+	unsigned char dipVal = *(GameInp[nDIPGameInp].pVal) | 0x01;
+
+	struct BurnInputInfo bii;
+	memset(&bii, 0, sizeof(bii));
+	BurnDrvGetInputInfo(&bii, nDIPGameInp);
+
+	char path[256];
+	sprintf(path, "roms/%s.ini", BurnDrvGetTextA(DRV_NAME));
+	FILE* fp = fopen(path, "w");
+	if (fp) {
+		fprintf(fp, "\"%s\" constant 0x%02X\n", bii.szName, dipVal);
+		fclose(fp);
+	}
+}
+
+void InpClearTestMode()
+{
+	if (!GameInp || nBurnDrvSelect >= nBurnDrvCount) return;
+
+	struct BurnDIPInfo bdi;
+	int nDIPGameInp = -1;
+	int nDIPOffset = 0;
+	int i;
+
+	for (i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+		if (bdi.nFlags == 0xF0) {
+			nDIPOffset = bdi.nInput;
+			break;
+		}
+	}
+
+	for (i = 0; BurnDrvGetDIPInfo(&bdi, i) == 0; i++) {
+		if (bdi.nFlags == 0xFF) {
+			nDIPGameInp = bdi.nInput + nDIPOffset;
+			break;
+		}
+	}
+
+	if (nDIPGameInp < 0 || nDIPGameInp >= (int)nGameInpCount) return;
+	if (!GameInp[nDIPGameInp].pVal) return;
+
+	// Clear Test Mode bit in memory AND nConst
+	*(GameInp[nDIPGameInp].pVal) &= ~0x01;
+	GameInp[nDIPGameInp].nConst = *(GameInp[nDIPGameInp].pVal);
+
+	// Also write INI with Test Mode cleared
+	struct BurnInputInfo bii;
+	memset(&bii, 0, sizeof(bii));
+	BurnDrvGetInputInfo(&bii, nDIPGameInp);
+
+	char path[256];
+	sprintf(path, "roms/%s.ini", BurnDrvGetTextA(DRV_NAME));
+	FILE* fp = fopen(path, "w");
+	if (fp) {
+		fprintf(fp, "\"%s\" constant 0x%02X\n", bii.szName, GameInp[nDIPGameInp].nConst);
+		fclose(fp);
+	}
+}
+
+
+void InpStartAutoClear()
+{
+	nAutoSaveCountdown = 60;
+}

@@ -71,6 +71,9 @@ int DrvExit();
 int InpInit();
 int InpExit();
 void InpDIP();
+void InpForceTestMode();
+void InpClearTestMode();
+void InpStartAutoClear();
 void loadDefaultInput();
 
 /* snd.cpp */
