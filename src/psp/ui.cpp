@@ -41,13 +41,13 @@ short wifiStatus=0;
 short saveIndex=0;
 short gameScreenWidth=SCREEN_WIDTH, gameScreenHeight=SCREEN_HEIGHT;
 bool enableJoyStick=true;
-char LBVer[]="FinalBurn Alpha for PSP "SUB_VERSION" (ver: LB_V12.4.0)";
+char LBVer[]="FinalBurn Alpha for PSP KOVSHP101";
 static int find_rom_count = 0;
 static int find_rom_select = 0;
 static int find_rom_top = 0;
 char ui_current_path[MAX_PATH];
 
-static unsigned int nPrevGame = ~0U;
+unsigned int nPrevGame = ~0U;
 
 static int ui_mainmenu_select = 0;
 
@@ -208,43 +208,25 @@ static int cpu_speeds_select = 3;
 
 enum uiMainIndex
 {
-	SELECT_ROM=0,
-	LOAD_GAME,
+	LOAD_GAME=0,
 	SAVE_GAME,
 	RESET_GAME,
 	SCREEN_SHOT,
 	CONTROLLER,
-	SKIP_FRAMES,
-	SCREEN_MODE,
-	GAME_SCREEN_WIDTH,
-	GAME_SCREEN_HEIGHT,
-	CPU_SPEED,
-	JOYSTICK,
 	WIFI_GAME,
 	SYNC_GAME,
-	PREVIEW,
-	MONO_SOUND,
 	EXIT_FBA,
 	MENU_COUNT
 };
 static char *ui_main_menu[] = {
-	"Select ROM ",
 	"%1u Load Game ",
 	"%1u Save Game ",
 	"Reset Game ",
 	"Screen Shot ",
 	"Controller: %1uP ",
-	"Max Skip Frames: %d",
-	"Screen Mode: %u ",
-	"Screen Width: %3u ",
-	"Screen Height: %3u ",
-	"CPU Speed: %3dMHz ",
-	"JoyStick: %s ",
 	"Wifi Game: %s ",
 	"P2P Sync Game ",
-	"Preview: %s ",
-	"Mono Sound: %s ",
-	"Exit FinaBurn Alpha"	
+	"Exit Game"	
 };
 
 static void update_status_str(char *batt_str)
@@ -316,27 +298,6 @@ void draw_ui_main()
 	    	else
 	    		strcpy(buf,"Controller: ALL");
 			break;
-	    case SKIP_FRAMES:
-	    	sprintf( buf, ui_main_menu[i],gameSpeedCtrl );
-			break;
-		case SCREEN_MODE:
-	    	sprintf( buf, ui_main_menu[i],screenMode );
-			break;
-		case GAME_SCREEN_WIDTH:
-	    	sprintf( buf, ui_main_menu[i],gameScreenWidth );
-			break;
-		case GAME_SCREEN_HEIGHT:
-	    	sprintf( buf, ui_main_menu[i],gameScreenHeight );
-			break;		
-	    case CPU_SPEED:
-	    	sprintf( buf, ui_main_menu[i], cpu_speeds[cpu_speeds_select].cpu );
-			break;
-		case JOYSTICK:
-			if(enableJoyStick)
-	    		sprintf( buf, ui_main_menu[i], "ENABLED" );
-	    	else
-	    		sprintf( buf, ui_main_menu[i], "DISABLED" );
-			break;
 		case WIFI_GAME:
 			switch(wifiStatus)
 			{
@@ -354,18 +315,6 @@ void draw_ui_main()
 					break;
 			}
 			break;
-		case PREVIEW:
-			if(needPreview)
-				sprintf( buf, ui_main_menu[i], "ON" );
-			else
-				sprintf( buf, ui_main_menu[i], "OFF" );
-			break;
-		case MONO_SOUND:
-			if(monoSound==1)
-				sprintf( buf, ui_main_menu[i], "ON" );
-			else
-				sprintf( buf, ui_main_menu[i], "OFF" );
-			break;
 	    default:
 	    	sprintf( buf, ui_main_menu[i]);
     	}
@@ -377,8 +326,8 @@ void draw_ui_main()
 	drawRect(GU_FRAME_ADDR(work_frame), 2+240*(ui_mainmenu_select/10), 40+(ui_mainmenu_select%10)*18, 236, 18, UI_COLOR,0x40);
 	
     drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
-    drawString("FB Alpha contains parts of MAME & Final Burn. (C) 2004, Team FB Alpha.", GU_FRAME_ADDR(work_frame), 10, 238, UI_COLOR);
-    drawString("FinalBurn Alpha for PSP (C) 2008, OopsWare and LBICELYNE", GU_FRAME_ADDR(work_frame), 10, 255, UI_COLOR);
+    //drawString("FB Alpha contains parts of MAME & Final Burn. (C) 2004, Team FB Alpha.", GU_FRAME_ADDR(work_frame), 10, 238, UI_COLOR);
+    //drawString("FinalBurn Alpha for PSP (C) 2008, OopsWare and LBICELYNE", GU_FRAME_ADDR(work_frame), 10, 255, UI_COLOR);
 	
 	//Draw preview
 	if(0&&ui_mainmenu_select==LOAD_GAME&&needPreview&&nBurnDrvSelect < nBurnDrvCount)
@@ -509,7 +458,7 @@ void draw_ui_browse(bool rebuiltlist)
 	nBurnDrvSelect = bds;
 }
 
-static void return_to_game()
+void return_to_game()
 {
 	if ( nPrevGame < nBurnDrvCount ) {
 		if(wifiStatus)
@@ -569,62 +518,12 @@ static void process_key( int key, int down, int repeat )
 					DoInputBlank(0);
 				draw_ui_main();
 				break;
-			case SKIP_FRAMES:
-				gameSpeedCtrl--;
-				if ( gameSpeedCtrl<0 ) 
-				{
-					gameSpeedCtrl=8;
-				}
-				draw_ui_main();
-				break;
-			case SCREEN_MODE:				
-				screenMode--;
-				if ( screenMode < 0 ) {
-					screenMode=8;
-				}	
-				if(nPrevGame!=~0U)
-					DoInputBlank(0);
-				processScreenMode();
-				draw_ui_main();					
-				break;
-			case GAME_SCREEN_WIDTH:				
-				gameScreenWidth=gameScreenWidth-2;
-				if ( gameScreenWidth < 2 ) {
-					gameScreenWidth=SCREEN_WIDTH;
-				}	
-				draw_ui_main();					
-				break;
-			case GAME_SCREEN_HEIGHT:				
-				gameScreenHeight=gameScreenHeight-2;
-				if ( gameScreenHeight < 2 ) {
-					gameScreenHeight=SCREEN_HEIGHT;
-				}	
-				draw_ui_main();					
-				break;
-			case CPU_SPEED:
-				if ( cpu_speeds_select > 0 ) {
-					cpu_speeds_select--;
-					draw_ui_main();
-				}
-				break;
-			case JOYSTICK:
-				enableJoyStick=!enableJoyStick;
-				draw_ui_main();
-				break;
 			case WIFI_GAME:
 				wifiStatus--;
 				if(wifiStatus<0)
 				{
 					wifiStatus=3;
 				}
-				draw_ui_main();
-				break;
-			case PREVIEW:
-				needPreview=!needPreview;
-				draw_ui_main();
-				break;
-			case MONO_SOUND:
-				monoSound=!monoSound;
 				draw_ui_main();
 				break;
 			default:
@@ -653,64 +552,12 @@ static void process_key( int key, int down, int repeat )
 					DoInputBlank(0);
 				draw_ui_main();
 				break;
-			case SKIP_FRAMES:
-				gameSpeedCtrl++;
-				if ( gameSpeedCtrl > 8) 
-				{
-					gameSpeedCtrl=0;
-				}
-				draw_ui_main();
-				break;
-			case SCREEN_MODE:				
-				screenMode++;
-				if ( screenMode>8 ) {
-					screenMode=0;
-				}
-					
-				if(nPrevGame!=~0U)
-					DoInputBlank(0);
-				processScreenMode();
-				draw_ui_main();					
-								
-				break;
-			case GAME_SCREEN_WIDTH:				
-				gameScreenWidth=gameScreenWidth+2;
-				if ( gameScreenWidth > SCREEN_WIDTH ) {
-					gameScreenWidth=2;
-				}	
-				draw_ui_main();					
-				break;
-			case GAME_SCREEN_HEIGHT:				
-				gameScreenHeight=gameScreenHeight+2;
-				if ( gameScreenHeight > SCREEN_HEIGHT ) {
-					gameScreenHeight=2;
-				}	
-				draw_ui_main();					
-				break;
-			case CPU_SPEED:
-				if ( cpu_speeds_select < 3 ) {
-					cpu_speeds_select++;
-					draw_ui_main();
-				}
-				break;
-			case JOYSTICK:
-				enableJoyStick=!enableJoyStick;
-				draw_ui_main();
-				break;
 			case WIFI_GAME:
 				wifiStatus++;
 				if(wifiStatus>3)
 				{
 					wifiStatus=0;
 				}
-				draw_ui_main();
-				break;
-			case PREVIEW:
-				needPreview=!needPreview;
-				draw_ui_main();
-				break;
-			case MONO_SOUND:
-				monoSound=!monoSound;
 				draw_ui_main();
 				break;
 			default:
@@ -725,12 +572,6 @@ static void process_key( int key, int down, int repeat )
 			
 		case PSP_CTRL_CIRCLE:
 			switch( ui_mainmenu_select ) {
-			case SELECT_ROM:
-				setGameStage(2);
-				strcpy(ui_current_path, szAppRomPath);
-				//ui_current_path[strlen(ui_current_path)-1] = 0;
-				draw_ui_browse(true);
-				break;
 			case LOAD_GAME:
 				if(nPrevGame != ~0U&&wifiStatus!=2)
 				{
@@ -977,6 +818,7 @@ int do_ui_key(unsigned int key)
 
 void ui_update_progress(float size, char * txt)
 {
+	return; // skip progress bar
 	if(bgIndex!=2)
 		drawRect( GU_FRAME_ADDR(work_frame), 10, 238, 460, 30, UI_BGCOLOR );
 	else

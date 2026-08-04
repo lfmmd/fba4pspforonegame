@@ -26,6 +26,8 @@ PSP_HEAP_SIZE_KB(-1);
 PSP_MAIN_THREAD_ATTR( THREAD_ATTR_USER );
 
 extern bool enableJoyStick;
+extern unsigned int nPrevGame;
+extern void return_to_game();
 
 //#define MAX_PATH		1024
 short skipFrame=0;
@@ -155,8 +157,27 @@ int main(int argc, char** argv) {
 	BurnHighCol = HighCol16;
 	
 	pBurnDraw = (unsigned char *) video_frame_addr(tex_frame, 0, 0);
+	// Auto-boot kovshp
+	for (unsigned int i = 0; i < nBurnDrvCount; i++) {
+		nBurnDrvSelect = i;
+		if (strcmp(BurnDrvGetTextA(DRV_NAME), "kovshp") == 0 && BurnDrvIsWorking()) {
+			nPrevGame = i;
+			setGameStage(3);
+			if (DrvInit(i, false) == 0) {
+				BurnRecalcPal();
+				InpInit();
+				InpDIP();
+				return_to_game();
+			} else {
+				nBurnDrvSelect = ~0U;
+				nPrevGame = ~0U;
+				setGameStage(1);
+			}
+			break;
+		}
+	}
+
 	
-	draw_ui_main();
 	bGameRunning = 1;
 	nCurrentFrame = 0;
 

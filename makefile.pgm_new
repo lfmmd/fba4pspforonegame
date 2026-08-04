@@ -210,8 +210,8 @@ $(NAME):	$(allobj)
 	@echo Creating PSP EBOOT.PBP...
 	@$(FIXUP) $@
 	@psp-strip $(NAME) -o eboot_strip.elf
-	@mksfoex -d MEMSIZE=1 'FinalBurn Alpha for PSP' eboot.sfo
-	@pack-pbp ${BINDIR}/EBOOT.PBP eboot.sfo $(srcdir)psp/fbapsp_pgm.png NULL NULL NULL NULL eboot_strip.elf NULL
+	@mksfoex -d MEMSIZE=1 '三国战纪 乱世枭雄' eboot.sfo
+	@pack-pbp ${BINDIR}/EBOOT.PBP eboot.sfo $(srcdir)psp/fbapsp_pgm.png NULL $(srcdir)psp/kovshp.png NULL NULL eboot_strip.elf NULL
 	-@rm -f eboot.sfo eboot_strip.elf
 
 
