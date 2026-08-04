@@ -1530,8 +1530,8 @@ void kovshp_asic_patch()
 
 static unsigned short __fastcall kovshp_asic27a_read_word(unsigned int address)
 {
-	if ((address & 0xffffe0) == 0x4f0000) {
-		return *((unsigned short*)(PGMARMShareRAM + (address & 0x1e)));
+	if ((address & 0xffffc0) == 0x4f0000) {
+		return *((unsigned short*)(PGMARMShareRAM + (address & 0x3e)));
 	}
 
 	switch (address & 0x6)
@@ -1604,7 +1604,7 @@ static void __fastcall kovshp_asic27a_write_word(unsigned int address, unsigned 
 static void kovshp_asic27a_arm7_write_word(unsigned int address, unsigned short data)
 {
 	if ((address & 0xffffff80) == 0x50800000) {
-		*((unsigned short*)(PGMARMShareRAM + ((address>>1) & 0x1e))) = data;
+		*((unsigned short*)(PGMARMShareRAM + ((address>>1) & 0x3e))) = data;
 		return;
 	}
 }
@@ -1684,9 +1684,9 @@ void install_protection_asic27a_kovshp()
 	pPgmResetCallback = kovshp_asic27a_reset;
 
 	SekOpen(0);
-	SekMapMemory(PGMARMShareRAM,	0x4f0000, 0x4f001f, SM_READ); // shared ram, read-only for 68k
+	SekMapMemory(PGMARMShareRAM,	0x4f0000, 0x4f003f, SM_RAM);
 
-	SekMapHandler(4,				0x500000, 0x500005, SM_READ | SM_WRITE);
+	SekMapHandler(4,				0x500000, 0x600005, SM_READ | SM_WRITE);
 	SekSetReadWordHandler(4, 		kovshp_asic27a_read_word);
 	SekSetWriteWordHandler(4, 		kovshp_asic27a_write_word);
 	SekClose();
