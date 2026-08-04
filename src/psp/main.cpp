@@ -337,12 +337,9 @@ GAME_RUNNING:
 			drawString(fps, (unsigned short*)((unsigned int)GU_FRAME_ADDR(tex_frame)|0x40000000), 11, 11, R8G8B8_to_B5G6R5(0x404040));
 			drawString(fps, (unsigned short*)((unsigned int)GU_FRAME_ADDR(tex_frame)|0x40000000), 10, 10, R8G8B8_to_B5G6R5(0xffffff));
 #endif			
-			if(pBurnDraw)
-			{
 				show_frame = draw_frame;
 				draw_frame = sceGuSwapBuffers();
 				update_gui();
-			}
 			BurnDrvFrame();
 			pBurnDraw = NULL;
 			

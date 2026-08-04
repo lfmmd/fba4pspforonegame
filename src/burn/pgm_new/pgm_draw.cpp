@@ -79,7 +79,7 @@ void __fastcall pgmOnDestroy(unsigned char* addr)
 	//panicMsg="pgmOnDestroy out";
 }
 
-static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, int palt, int boffset, int flip, unsigned int /*xzoom*/, int /*xgrow*/, unsigned int /*yzoom*/, int /*ygrow*/ )
+static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, int palt, int boffset, int flip, unsigned int xzoom, int xgrow, unsigned int yzoom, int ygrow )
 {
 	if ( boffset >= 0x1000000 ) return;
 	
@@ -253,15 +253,21 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 	}
 	src=(unsigned char*)head+sizeof(SpriteCacheHead);
 	unsigned short * dst = (unsigned short *)pBurnDraw;
+	unsigned short * dst_orig = dst;
 	int w = wide<<4;
 	int h = high;
-	
+	unsigned char * src_orig = src;
+
 	unsigned int * pRamCurPal = RamCurPal + palt;
 	dst += (ypos * PGM_WIDTH) + xpos;
 
-	int xfix = w;
 	unsigned char * src2;
-	
+
+	if (xzoom == 0 && yzoom == 0) // fast path: no zoom
+	{
+
+	int xfix = w;
+
 	if ( flip & 0x02 ) {
 		
 		dst += (h-1) * PGM_WIDTH;
@@ -362,6 +368,51 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 				dst += PGM_WIDTH;
 			}
 
+		}
+	}
+	} else { // zoomed rendering (xzoom/ygrow bitmask, per FBNeo)
+
+		// Y zoom loop
+		int ycnt = 0, ycntdraw = 0;
+		while (ycnt < h) {
+			int yzoombit = (yzoom >> (ycnt & 0x1f)) & 1;
+			int line_repeat = 1;
+			if (yzoombit && ygrow) line_repeat = 2;
+			else if (yzoombit && !ygrow) line_repeat = 0;
+
+			for (int r = 0; r < line_repeat; r++) {
+				int dy = ypos + ycntdraw;
+				ycntdraw++;
+				if (dy < 0 || dy >= 224) { if (dy >= 224) ycnt = h; continue; }
+
+				unsigned short *dst_line = dst_orig + dy * PGM_WIDTH;
+				int src_y = (flip & 0x02) ? (h - ycnt - 1) : ycnt;
+				unsigned char *src_line = src_orig + src_y * w;
+
+				int xcnt = 0, xcntdraw_x = 0;
+				while (xcnt < w) {
+					int xzoombit = (xzoom >> (xcnt & 0x1f)) & 1;
+					int src_x = (flip & 0x01) ? (w - xcnt - 1) : xcnt;
+					unsigned char c = src_line[src_x];
+
+					if (xzoombit && xgrow) {
+						for (int px = 0; px < 2; px++) {
+							int dx = xpos + xcntdraw_x;
+							if (dx >= 0 && dx < 448 && c <= 0x1f)
+								dst_line[dx] = pRamCurPal[c];
+							xcntdraw_x++;
+						}
+					} else if (xzoombit && !xgrow) {
+					} else {
+						int dx = xpos + xcntdraw_x;
+						if (dx >= 0 && dx < 448 && c <= 0x1f)
+							dst_line[dx] = pRamCurPal[c];
+						xcntdraw_x++;
+					}
+					xcnt++;
+				}
+			}
+			ycnt++;
 		}
 	}
 		
@@ -511,8 +562,8 @@ static void pgm_drawsprites(int priority)
 			if (ygrow) {
 				yzom = 0x10-yzom;
 			}
-			xzoom = (pgm_sprite_zoomtable[xzom*2]<<16)|pgm_sprite_zoomtable[xzom*2+1];
-			yzoom = (pgm_sprite_zoomtable[yzom*2]<<16)|pgm_sprite_zoomtable[yzom*2+1];
+			xzoom = (xzom & 0x10) ? 0 : ((pgm_sprite_zoomtable[xzom*2]<<16)|pgm_sprite_zoomtable[xzom*2+1]);
+			yzoom = (yzom & 0x10) ? 0 : ((pgm_sprite_zoomtable[yzom*2]<<16)|pgm_sprite_zoomtable[yzom*2+1]);
 			
 			boff *= 2;
 			if (xpos > 0x3ff) xpos -=0x800;
