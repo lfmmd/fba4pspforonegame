@@ -4,6 +4,7 @@
 #include "UniCache.h"
 
 #ifdef BUILD_PSP
+#include <pspkernel.h>
 #include <psprtc.h>
 #endif
 
