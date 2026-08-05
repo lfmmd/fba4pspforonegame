@@ -657,19 +657,15 @@ static void process_key( int key, int down, int repeat )
 			case SERVICE_MODE:
 				if(nPrevGame != ~0U)
 				{
-					DrvExit();
+					InpForceTestMode();
+					InpStartAutoClear();
 					scePowerSetClockFrequency(
 							cpu_speeds[cpu_speeds_select].cpu,
 							cpu_speeds[cpu_speeds_select].cpu,
 							cpu_speeds[cpu_speeds_select].bus );
-					if (DrvInit(nPrevGame, false) == 0) {
-						BurnRecalcPal();
-						InpInit();
-						InpDIP();
-						InpForceTestMode();
-						InpStartAutoClear();
-						return_to_game();
-					}
+					resetGame();
+					if(wifiStatus==3)
+						wifiSend(WIFI_CMD_RESET);
 				}
 				break;
 			case EXIT_FBA:	// Exit
