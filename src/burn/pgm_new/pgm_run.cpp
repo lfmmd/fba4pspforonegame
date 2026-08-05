@@ -332,7 +332,7 @@ static void pgm_calendar_w(unsigned short data)
 		hour = rs / 3600; min = (rs % 3600) / 60; sec = rs % 60;
 
 		/* Howard Hinnant: days since 0001-01-01 → year / month / day */
-		unsigned int z = ds + 719468;                   /* shift to civil (March-based) epoch */
+		unsigned int z = ds + 306;                      /* shift to civil (March-based) epoch: 0000-03-01 → 0001-01-01 = 306 days */
 		unsigned int era = z / 146097;
 		unsigned int doe = z - era * 146097;
 		unsigned int yoe = (doe - doe/1460 + doe/36524 - doe/146096) / 365;
