@@ -52,6 +52,7 @@ extern bool fillExtendData;
 extern unsigned int dbgCacheReads;
 extern unsigned int dbgCacheReadLastOff;
 extern unsigned int dbgCacheReadLastRA;
+extern unsigned int dbgCacheMaxAllocKB;
 //extern void *mallocHook(int NumBytes);
 //extern void freeHook(void *FirstByte);
 extern void *mallocTemp(int NumBytes,void(*onDestroyFuncPtr)(unsigned char* addr));

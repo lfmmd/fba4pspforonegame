@@ -77,6 +77,8 @@ unsigned long nPGMTileROMOffset;
 unsigned long nPGMSPRColROMOffset;
 unsigned long nPGMSPRMaskROMOffset;
 unsigned long nPGMSNDROMOffset;
+unsigned char *pgmSndRam = NULL;
+unsigned long pgmSndRamSize = 0;
 
 
 
@@ -695,7 +697,25 @@ int pgmInit()
 	if (pPgmInitCallback) {
 		pPgmInitCallback();
 	}
-	
+
+#ifdef PGM_SND_RESIDENT
+	//Load sound ROM into RAM to avoid per-frame memory stick reads.
+	//Must be done before initCacheStructure so the cache pool probe
+	//accounts for the reserved memory.
+	pgmSndRam = NULL;
+	pgmSndRamSize = 0;
+	if (nPGMSNDROMOffset != 0xffffffff && nPGMSNDROMOffset < cacheFileSize) {
+		pgmSndRamSize = cacheFileSize - nPGMSNDROMOffset;
+		pgmSndRam = (unsigned char *)malloc(pgmSndRamSize);
+		if (pgmSndRam) {
+			sceIoLseek(cacheFile, nPGMSNDROMOffset, SEEK_SET);
+			sceIoRead(cacheFile, pgmSndRam, pgmSndRamSize);
+		} else {
+			pgmSndRamSize = 0;
+		}
+	}
+#endif
+
 	//Init cacheIndex
 	initCacheStructure(0.85);
 
@@ -799,6 +819,13 @@ int pgmExit()
 	nReignHack = 0;
 	nPgmAsicRegionHackAddress = 0;
 	nArm7Idle = 0;
+
+	if (pgmSndRam) {
+		free(pgmSndRam);
+		pgmSndRam = NULL;
+	}
+	pgmSndRamSize = 0;
+
 	destroyUniCache();
 
 	return 0;

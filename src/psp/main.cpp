@@ -200,8 +200,7 @@ GAME_RUNNING:
 		nTicksCountInSec=ctk - ptk;
 		if ( nTicksCountInSec>= 1000000 ) {
 			ptk += 1000000;
-			sprintf( fps, "%2d FPS d:0x%X,0x%X c:%u@0x%X ra:0x%X", nframes,debugValue[0],debugValue[1],dbgCacheReads,dbgCacheReadLastOff,dbgCacheReadLastRA);
-			dbgCacheReads = 0;
+			sprintf( fps, "%2d FPS U:%uK A:%uK T:%uK M:%uK", nframes,getUsedMemSize(),getFreeMemSize(),totalMemBlocks<<6,dbgCacheMaxAllocKB);
 			nframes = 0;
 			nTicksCountInSec=0;
 		}

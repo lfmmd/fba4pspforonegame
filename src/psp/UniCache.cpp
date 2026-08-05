@@ -18,6 +18,8 @@ bool fillExtendData=false;
 unsigned int dbgCacheReads=0;
 unsigned int dbgCacheReadLastOff=0;
 unsigned int dbgCacheReadLastRA=0;
+//debug: max contiguous allocatable at probe time (KB)
+unsigned int dbgCacheMaxAllocKB=0;
 //test
 //int debugValue1=0, debugValue2=0;
 //void (*fillCacheDataFuncP)(unsigned char* freeCacheSpaceHead);
@@ -154,7 +156,7 @@ void initCacheStructure(float ratio)
 			break;
 	}
 	free (uniCacheHead);
-	
+	dbgCacheMaxAllocKB = totalMemBlocks << 6;
 	totalMemBlocks = (unsigned int)(totalMemBlocks*((ratio<=1&&ratio>0)?ratio:0.7))-3; //reserve for other dynamic using
 	uniCacheHead = (unsigned char *)malloc(totalMemBlocks<<CACHE_INDEX_SHIFT);
 

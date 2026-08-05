@@ -532,8 +532,8 @@ static void process_key( int key, int down, int repeat )
 				draw_ui_main();
 				break;
 				case SKIP_FRAMES:
-					if (gameSpeedCtrl > 0)
-						gameSpeedCtrl--;
+					gameSpeedCtrl--;
+					if(gameSpeedCtrl<0) gameSpeedCtrl=AUTO_FRAMESKIP;
 					draw_ui_main();
 					break;
 			default:
@@ -566,8 +566,8 @@ static void process_key( int key, int down, int repeat )
 				draw_ui_main();
 				break;
 				case SKIP_FRAMES:
-					if (gameSpeedCtrl < AUTO_FRAMESKIP)
-						gameSpeedCtrl++;
+					gameSpeedCtrl++;
+					if(gameSpeedCtrl>AUTO_FRAMESKIP) gameSpeedCtrl=0;
 					draw_ui_main();
 					break;
 			default:

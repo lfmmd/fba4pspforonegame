@@ -18,6 +18,8 @@
 #include "UniCache.h"
 unsigned char *ICSSNDROM ;
 extern unsigned long nPGMSNDROMOffset;
+extern unsigned char *pgmSndRam;
+extern unsigned long pgmSndRamSize;
 enum { V_ON = 1, V_DONE = 2 };
 
 struct ics2115 {
@@ -365,7 +367,11 @@ void ics2115_update(int /*length*/)
 			for(int i=0; i<ICS2115_FRAME_BUFFER_SIZE; i++) {
 					
 					signed int v =0;
-					ICSSNDROM=getBlockSmallData(nPGMSNDROMOffset+(badr|(adr >> 12)));
+					if(pgmSndRam) {
+						unsigned int sndOff = badr|(adr >> 12);
+						ICSSNDROM = (sndOff < pgmSndRamSize) ? pgmSndRam + sndOff : NULL;
+					} else
+						ICSSNDROM=getBlockSmallData(nPGMSNDROMOffset+(badr|(adr >> 12)));
 					if(ICSSNDROM) 
 						v = *ICSSNDROM;
 					
