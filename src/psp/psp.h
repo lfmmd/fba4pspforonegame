@@ -6,6 +6,8 @@
 #define SCREEN_WIDTH	480
 #define SCREEN_HEIGHT	272
 
+#define AUTO_FRAMESKIP	9		/* Frame Skip auto mode */
+
 #define GU_FRAME_ADDR(frame)		(unsigned short *)((unsigned int)frame | 0x44000000)
 
 /* main.cpp */
@@ -39,6 +41,8 @@ void draw_ui_browse(bool rebuiltlist);
 void ui_update_progress(float size, char * txt);
 void ui_update_progress2(float size, const char * txt);
 extern short gameSpeedCtrl;
+extern short autoSkipLevel;
+extern short autoStableCount;
 extern unsigned int hotButtons ;
 extern short screenMode;
 extern short wifiStatus;

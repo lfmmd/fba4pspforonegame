@@ -14,6 +14,10 @@ unsigned short indexRecycleListHead=SHORT_INVALID_VALUE, indexRecycleListEnd=SHO
 unsigned int uniCacheSpaceStatus[CACHE_SPACE_STATUS_SIZE]={0xffffffff,};
 bool needCreateCache=false;
 bool fillExtendData=false;
+//debug: memory stick cache read statistics
+unsigned int dbgCacheReads=0;
+unsigned int dbgCacheReadLastOff=0;
+unsigned int dbgCacheReadLastRA=0;
 //test
 //int debugValue1=0, debugValue2=0;
 //void (*fillCacheDataFuncP)(unsigned char* freeCacheSpaceHead);
@@ -35,6 +39,9 @@ inline static void fillCacheData(unsigned int requestBlockCount)
 		if(cacheFile<0) 
 			cacheFile = sceIoOpen( filePathName, PSP_O_RDONLY, 0777);
 			
+		dbgCacheReads++;
+		dbgCacheReadLastOff = blockOffset;
+		dbgCacheReadLastRA = (unsigned int)__builtin_return_address(0);
 		sceIoLseek( cacheFile, blockOffset, SEEK_SET );
 		sceIoRead( cacheFile, uniCacheHead+(uniCacheIndex[requestAddrOffsetHigh].cacheSpaceHeadOffsetHigh<<CACHE_INDEX_SHIFT), requestBlockCount<<CACHE_INDEX_SHIFT );
 	}

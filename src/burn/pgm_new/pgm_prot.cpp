@@ -1499,6 +1499,7 @@ static unsigned short kovshp_lowlatch_to_arm;
 static unsigned short kovshp_highlatch_to_68k;
 static unsigned short kovshp_lowlatch_to_68k;
 static unsigned int kovshp_arm_counter;
+static int kovshp_arm7_started = 0;   // set once the ARM7 has responded (past init)
 
 static void kovshp_asic27a_reset()
 {
@@ -1507,6 +1508,7 @@ static void kovshp_asic27a_reset()
 	kovshp_highlatch_to_68k = 0;
 	kovshp_lowlatch_to_68k = 0;
 	kovshp_arm_counter = 1;
+	kovshp_arm7_started = 0;
 }
 
 void kovshp_asic_patch()
@@ -1604,10 +1606,14 @@ static void __fastcall kovshp_asic27a_write_word(unsigned int address, unsigned 
 static void kovshp_asic27a_arm7_write_word(unsigned int address, unsigned short data)
 {
 	if ((address & 0xffffff80) == 0x50800000) {
+		extern int dbgArmShareWrites;
+		dbgArmShareWrites++;
 		*((unsigned short*)(PGMARMShareRAM + ((address>>1) & 0x3e))) = data;
 		return;
 	}
 }
+
+extern int dbgArmResponse;
 
 static void kovshp_asic27a_arm7_write_long(unsigned int address, unsigned int data)
 {
@@ -1615,6 +1621,8 @@ static void kovshp_asic27a_arm7_write_long(unsigned int address, unsigned int da
 	{
 		case 0x40000000:
 		{
+			dbgArmResponse++;
+			kovshp_arm7_started = 1;
 			kovshp_highlatch_to_68k = data >> 16;
 			kovshp_lowlatch_to_68k = data;
 			kovshp_lowlatch_to_arm = 0;
@@ -1632,7 +1640,13 @@ static unsigned int kovshp_asic27a_arm7_read_long(unsigned int address)
 	switch (address)
 	{
 		case 0x40000000:
-			return (kovshp_highlatch_to_arm << 16) | kovshp_lowlatch_to_arm;
+		{
+			unsigned int val = (kovshp_highlatch_to_arm << 16) | kovshp_lowlatch_to_arm;
+			if (val == 0 && kovshp_arm7_started) {
+				pgm_arm7_suspend();   // ARM7 back in its wait loop — nothing to do, sleep
+			}
+			return val;
+		}
 
 		case 0x4000000c:
 			return kovshp_arm_counter++;
@@ -1673,6 +1687,7 @@ static int kovshp_asic27aScan(int nAction, int *)
 		SCAN_VAR(kovshp_highlatch_to_68k);
 		SCAN_VAR(kovshp_lowlatch_to_68k);
 		SCAN_VAR(kovshp_arm_counter);
+		SCAN_VAR(kovshp_arm7_started);
 	}
 
  	return 0;

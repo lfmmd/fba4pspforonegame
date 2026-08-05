@@ -311,7 +311,10 @@ void draw_ui_main()
 				strcpy(buf, "Controller: ALL");
 			break;
 		case SKIP_FRAMES:
-			sprintf( buf, ui_main_menu[i], gameSpeedCtrl );
+			if ( gameSpeedCtrl == AUTO_FRAMESKIP )
+				strcpy(buf, "Frame Skip: AUTO");
+			else
+				sprintf( buf, ui_main_menu[i], gameSpeedCtrl );
 			break;
 		case WIFI_GAME:
 			switch(wifiStatus)
@@ -563,7 +566,7 @@ static void process_key( int key, int down, int repeat )
 				draw_ui_main();
 				break;
 				case SKIP_FRAMES:
-					if (gameSpeedCtrl < 8)
+					if (gameSpeedCtrl < AUTO_FRAMESKIP)
 						gameSpeedCtrl++;
 					draw_ui_main();
 					break;
@@ -884,6 +887,10 @@ void ui_update_progress2(float size, const char * txt)
 }
 void setGameStage(int stage)
 {
+	if ( nGameStage != stage && stage == 0 ) {
+		autoSkipLevel = 0;
+		autoStableCount = 0;
+	}
 	nGameStage=stage;
 	configureVertices();
 }

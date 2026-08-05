@@ -53,6 +53,13 @@ static int nReignHack = 0;
 static int nArm7Idle = 0;
 unsigned int nPgmAsicRegionHackAddress = 0;
 
+extern unsigned int debugValue[2];
+int dbgArmResponse = 0;            // ARM7 response writes to 0x40000000 (cumulative)
+int dbgArmShareWrites = 0;         // ARM7 writes to share RAM 0x50800000 (cumulative)
+static int dbgArmSuspendTotal = 0; // pgm_arm7_suspend() calls (cumulative)
+static int dbgArmCycles = 0;       // actual ARM7 cycles executed per frame
+static int dbgArmCyclesMax = 0;    // worst frame: ARM7 cycles
+
 #define M68K_CYCS_PER_FRAME	(20000000 / 60)
 #define Z80_CYCS_PER_FRAME	( 8468000 / 60)
 #define ARM7_CYCS_PER_FRAME	(20000000 / 60)
@@ -598,13 +605,14 @@ void pgm_cpu_sync()
 void pgm_arm7_resume()
 {
 	nArm7Idle = 0;
-	Arm7Run(ARM7_CYCS_PER_INTER);
+	dbgArmCycles += Arm7Run(ARM7_CYCS_PER_INTER);
 }
 
 void pgm_arm7_suspend()
 {
 	Arm7Idle();
 	nArm7Idle = 1;
+	dbgArmSuspendTotal++;
 }
 
 int PgmDoReset()
@@ -879,7 +887,9 @@ int pgmFrame()
 		cycles = nCyclesNext[2] - nCyclesDone[2];
 
 		if (cycles > 0 && nEnableArm7 && nArm7Idle == 0 ) {
-			nCyclesDone[2] += Arm7Run(cycles);
+			int nArmRet = Arm7Run(cycles);
+			nCyclesDone[2] += nArmRet;
+			dbgArmCycles += nArmRet;
 		}
 
 		if ( nPgmZ80Work ) {
@@ -908,7 +918,13 @@ int pgmFrame()
 	ics2115_update(nBurnSoundLen);
 
 	if (pBurnDraw) pgmDraw();
-	
+
+	// Debug counters (ARM7 sync diagnosis)
+	if (dbgArmCycles > dbgArmCyclesMax) dbgArmCyclesMax = dbgArmCycles;
+	debugValue[0] = ((unsigned int)(dbgArmSuspendTotal & 0xffff) << 16) | (dbgArmResponse & 0xffff);
+	debugValue[1] = (unsigned int)dbgArmCyclesMax;
+	dbgArmCycles = 0;
+
 	return 0;
 }
 

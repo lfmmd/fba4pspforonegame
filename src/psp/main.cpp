@@ -31,6 +31,8 @@ extern void return_to_game();
 
 //#define MAX_PATH		1024
 short skipFrame=0;
+short autoSkipLevel=0;
+short autoStableCount=0;
 int nGameStage = 0;
 int bGameRunning = 0;
 char currentPath[MAX_PATH];
@@ -185,7 +187,7 @@ int main(int argc, char** argv) {
 #ifdef SHOW_FPS
 	u64 ctk, ptk;
 	int nframes = 0,nTicksCountInSec=0;
-	char fps[32] = {0, };
+	char fps[96] = {0, };
 	sceRtcGetCurrentTick( &ctk );
 	ptk = ctk;
 #endif
@@ -198,7 +200,8 @@ GAME_RUNNING:
 		nTicksCountInSec=ctk - ptk;
 		if ( nTicksCountInSec>= 1000000 ) {
 			ptk += 1000000;
-			sprintf( fps, "%2d FPS, debugValue:0x%X,0x%X",  nframes,debugValue[0],debugValue[1]);
+			sprintf( fps, "%2d FPS d:0x%X,0x%X c:%u@0x%X ra:0x%X", nframes,debugValue[0],debugValue[1],dbgCacheReads,dbgCacheReadLastOff,dbgCacheReadLastRA);
+			dbgCacheReads = 0;
 			nframes = 0;
 			nTicksCountInSec=0;
 		}
@@ -319,19 +322,34 @@ GAME_RUNNING:
 			}
 			
 			
-			if(mixbufidDiff<3&&skipFrame<gameSpeedCtrl)
+			short maxSkip = (gameSpeedCtrl == AUTO_FRAMESKIP) ? autoSkipLevel : gameSpeedCtrl;
+			if(mixbufidDiff<3&&skipFrame<maxSkip)
 			{
 				skipFrame++;
 			}else
 			{
 				skipFrame=0;
-				
+
 				while(mixbufidDiff>6&&bGameRunning)
 				{
 					sceKernelDelayThread(1000);
 				}
-				
+
 				pBurnDraw = (unsigned char *) video_frame_addr(tex_frame, 0, 0);
+				if(gameSpeedCtrl==AUTO_FRAMESKIP)
+				{
+					if(mixbufidDiff<3)
+					{
+						if(autoSkipLevel<8)
+							autoSkipLevel++;
+						autoStableCount=0;
+					}else if(++autoStableCount>=10)
+					{
+						autoStableCount=0;
+						if(autoSkipLevel>0)
+							autoSkipLevel--;
+					}
+				}
 			}
 #ifdef SHOW_FPS			
 			drawString(fps, (unsigned short*)((unsigned int)GU_FRAME_ADDR(tex_frame)|0x40000000), 11, 11, R8G8B8_to_B5G6R5(0x404040));

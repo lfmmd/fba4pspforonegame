@@ -113,7 +113,7 @@ void loadDefaultInput()
 				if(p==0||p[2]=='\0')
 					continue;
 				int value=hex2int(p[2]);
-				if(value>=0&&value<=8)
+				if(value>=0&&value<=AUTO_FRAMESKIP)
 					gameSpeedCtrl=value;
 			}
 			else if(p = strstr(IniLine, "hotButtons"))
@@ -321,7 +321,7 @@ else
 				if(p==0||p[2]=='\0')
 					continue;
 				int value=hex2int(p[2]);
-				if(value>=0&&value<=8)
+				if(value>=0&&value<=AUTO_FRAMESKIP)
 					gameSpeedCtrl=value;
 			}
 			else if(p = strstr(IniLine, "hotButtons"))
