@@ -6,7 +6,7 @@
 #ifdef BUILD_PSP
 /* PSP RTC tick (u64 available from psptypes.h via UniCache.h).
    Avoid <psprtc.h> to sidestep pspTime type compatibility issues. */
-int sceRtcGetCurrentTick(u64 *tick);
+extern "C" int sceRtcGetCurrentTick(u64 *tick);
 #endif
 
 unsigned char PgmJoy1[8] = {0,0,0,0,0,0,0,0};
