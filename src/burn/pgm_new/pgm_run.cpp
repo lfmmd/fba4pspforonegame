@@ -4,8 +4,9 @@
 #include "UniCache.h"
 
 #ifdef BUILD_PSP
-#include <pspkernel.h>
-#include <psprtc.h>
+/* PSP RTC tick (u64 available from psptypes.h via UniCache.h).
+   Avoid <psprtc.h> to sidestep pspTime type compatibility issues. */
+int sceRtcGetCurrentTick(u64 *tick);
 #endif
 
 unsigned char PgmJoy1[8] = {0,0,0,0,0,0,0,0};
@@ -318,18 +319,42 @@ static unsigned char pgm_calendar_r()
 static void pgm_calendar_w(unsigned short data)
 {
 #ifdef BUILD_PSP
-	pspTime pt;
-	sceRtcGetCurrentClock(&pt, 0);
-	int m = pt.month, y = pt.year, d = pt.day;
-	if (m < 3) { m += 12; y--; }
-	int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-#define LOCAL_HOUR   pt.hour
-#define LOCAL_MIN    pt.minutes
-#define LOCAL_SEC    pt.seconds
-#define LOCAL_MDAY   pt.day
-#define LOCAL_MON    pt.month
-#define LOCAL_YEAR   (pt.year % 100)
-#define LOCAL_WDAY   ((y + y/4 - y/100 + y/400 + t[m-1] + d) % 7)  /* 0=Sun */
+	/* PSP newlib time()/localtime() returns bogus tm_year (e.g. 2074).
+	   Read RTC ticks directly and convert to date components.
+	   RTC tick = microseconds since 0001-01-01 (Gregorian). */
+	u64 tick;
+	int hour, min, sec, mday, mon, year, wday;
+	{
+		sceRtcGetCurrentTick(&tick);
+		unsigned int ds = (unsigned int)(tick / (1000000ULL * 86400ULL)); /* days since 0001-01-01 */
+		unsigned int rs = (unsigned int)((tick / 1000000ULL) % 86400ULL); /* secs within day */
+
+		hour = rs / 3600; min = (rs % 3600) / 60; sec = rs % 60;
+
+		/* Howard Hinnant: days since 0001-01-01 → year / month / day */
+		unsigned int z = ds + 719468;                   /* shift to civil (March-based) epoch */
+		unsigned int era = z / 146097;
+		unsigned int doe = z - era * 146097;
+		unsigned int yoe = (doe - doe/1460 + doe/36524 - doe/146096) / 365;
+		year  = (int)(yoe + era * 400);
+		unsigned int doy = doe - (365 * yoe + yoe/4 - yoe/100);
+		unsigned int mp  = (5 * doy + 2) / 153;
+		mon   = (int)(mp + (mp < 10 ? 3 : -9));
+		mday  = (int)(doy - (153 * mp + 2) / 5 + 1);
+
+		/* Zeller-like day-of-week (0=Sun, matches tm_wday) */
+		unsigned int m2 = mon, y2 = year;
+		if (m2 < 3) { m2 += 12; y2--; }
+		unsigned int tw[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+		wday = (int)((y2 + y2/4 - y2/100 + y2/400 + tw[m2-1] + mday) % 7);
+	}
+#define LOCAL_HOUR   hour
+#define LOCAL_MIN    min
+#define LOCAL_SEC    sec
+#define LOCAL_MDAY   mday
+#define LOCAL_MON    mon
+#define LOCAL_YEAR   (year % 100)
+#define LOCAL_WDAY   wday
 #else
 	time_t nLocalTime = time(NULL);
 	tm* tmLocalTime = localtime(&nLocalTime);
@@ -391,7 +416,7 @@ static void pgm_calendar_w(unsigned short data)
 
 			case 0xf: // Load Date
 #ifdef BUILD_PSP
-				sceRtcGetCurrentClock(&pt, 0);
+				sceRtcGetCurrentTick(&tick);
 #else
 				tmLocalTime = localtime(&nLocalTime);
 #endif
