@@ -33,7 +33,7 @@
 
 #define find_rom_list_cnt	10
 
-short gameSpeedCtrl = 1;
+short gameSpeedCtrl = AUTO_FRAMESKIP;
 unsigned int hotButtons = (PSP_CTRL_SQUARE|PSP_CTRL_CIRCLE|PSP_CTRL_CROSS);
 
 short screenMode=0;

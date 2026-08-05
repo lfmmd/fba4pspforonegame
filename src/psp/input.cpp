@@ -71,7 +71,7 @@ void loadDefaultInput()
 	//Read customized input info from ini file.
 	
 	monoSound=0;
-	gameSpeedCtrl=1;
+	gameSpeedCtrl=AUTO_FRAMESKIP;
 	screenMode=0;
 	FILE * fp = fopen("fba4psp.ini", "r");
 	
