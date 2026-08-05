@@ -3,6 +3,10 @@
 #include "arm7_intf.h"
 #include "UniCache.h"
 
+#ifdef BUILD_PSP
+#include <psprtc.h>
+#endif
+
 unsigned char PgmJoy1[8] = {0,0,0,0,0,0,0,0};
 unsigned char PgmJoy2[8] = {0,0,0,0,0,0,0,0};
 unsigned char PgmJoy3[8] = {0,0,0,0,0,0,0,0};
@@ -312,8 +316,30 @@ static unsigned char pgm_calendar_r()
 
 static void pgm_calendar_w(unsigned short data)
 {
+#ifdef BUILD_PSP
+	pspTime pt;
+	sceRtcGetCurrentClock(&pt, 0);
+	int m = pt.month, y = pt.year, d = pt.day;
+	if (m < 3) { m += 12; y--; }
+	int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+#define LOCAL_HOUR   pt.hour
+#define LOCAL_MIN    pt.minutes
+#define LOCAL_SEC    pt.seconds
+#define LOCAL_MDAY   pt.day
+#define LOCAL_MON    pt.month
+#define LOCAL_YEAR   (pt.year % 100)
+#define LOCAL_WDAY   ((y + y/4 - y/100 + y/400 + t[m-1] + d) % 7)  /* 0=Sun */
+#else
 	time_t nLocalTime = time(NULL);
 	tm* tmLocalTime = localtime(&nLocalTime);
+#define LOCAL_HOUR   tmLocalTime->tm_hour
+#define LOCAL_MIN    tmLocalTime->tm_min
+#define LOCAL_SEC    tmLocalTime->tm_sec
+#define LOCAL_MDAY   tmLocalTime->tm_mday
+#define LOCAL_MON    (tmLocalTime->tm_mon + 1)
+#define LOCAL_YEAR   (tmLocalTime->tm_year % 100)
+#define LOCAL_WDAY   tmLocalTime->tm_wday
+#endif
 
 	CalCom <<= 1;
 	CalCom |= data & 1;
@@ -330,20 +356,20 @@ static void pgm_calendar_w(unsigned short data)
 				CalVal++;
 				break;
 
-			case 0x0: // Day
-				CalVal=bcd(tmLocalTime->tm_wday);
+			case 0x0: // Day of week
+				CalVal=bcd(LOCAL_WDAY);
 				break;
 
 			case 0x2:  // Hours
-				CalVal=bcd(tmLocalTime->tm_hour);
+				CalVal=bcd(LOCAL_HOUR);
 				break;
 
 			case 0x4:  // Seconds
-				CalVal=bcd(tmLocalTime->tm_sec);
+				CalVal=bcd(LOCAL_SEC);
 				break;
 
 			case 0x6:  // Month
-				CalVal=bcd(tmLocalTime->tm_mon + 1); // not bcd in MVS
+				CalVal=bcd(LOCAL_MON); // not bcd in MVS
 				break;
 
 			case 0x8: // Milliseconds?
@@ -351,23 +377,35 @@ static void pgm_calendar_w(unsigned short data)
 				break;
 
 			case 0xa: // Day
-				CalVal=bcd(tmLocalTime->tm_mday);
+				CalVal=bcd(LOCAL_MDAY);
 				break;
 
 			case 0xc: // Minute
-				CalVal=bcd(tmLocalTime->tm_min);
+				CalVal=bcd(LOCAL_MIN);
 				break;
 
 			case 0xe: // Year
-				CalVal=bcd(tmLocalTime->tm_year % 100);
+				CalVal=bcd(LOCAL_YEAR);
 				break;
 
 			case 0xf: // Load Date
+#ifdef BUILD_PSP
+				sceRtcGetCurrentClock(&pt, 0);
+#else
 				tmLocalTime = localtime(&nLocalTime);
+#endif
 				break;
 		}
 	}
 }
+
+#undef LOCAL_HOUR
+#undef LOCAL_MIN
+#undef LOCAL_SEC
+#undef LOCAL_MDAY
+#undef LOCAL_MON
+#undef LOCAL_YEAR
+#undef LOCAL_WDAY
 
 inline static unsigned int CalcCol(unsigned short nColour)
 {
