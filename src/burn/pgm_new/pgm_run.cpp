@@ -117,6 +117,7 @@ static int pgmMemIndex()
 	RamEnd		= Next;
 
 	spriteCacheArray = (SpriteCacheIndex *) Next; Next += sizeof(SpriteCacheIndex)*SPRITE_CACHE_SIZE;
+	g_spriteDecodePool = (unsigned char *) Next; Next += SPRITE_POOL_SIZE;
 	MemEnd		= Next;
 	return 0;
 }
@@ -640,7 +641,8 @@ if (nEnableArm7) {
 
 int pgmInit()
 {
-	spriteCacheArrayFreeP=0;
+	spriteCacheArrayFreeP = 0;
+	g_spritePoolAllocPtr = 0;
 	Mem = NULL;
 	bGamePuzlstar = strcmp(BurnDrvGetTextA(DRV_NAME), "puzlstar") == 0;
 	bGameDrgw2 = strcmp(BurnDrvGetTextA(DRV_NAME), "drgw2") == 0 || strcmp(BurnDrvGetTextA(DRV_NAME), "drgw2c") == 0 || strcmp(BurnDrvGetTextA(DRV_NAME), "drgw2j") == 0;
@@ -824,7 +826,8 @@ int pgmExit()
 		free(pgmSndRam);
 		pgmSndRam = NULL;
 	}
-	pgmSndRamSize = 0;
+	g_spriteDecodePool = NULL;
+	g_spritePoolAllocPtr = 0;
 
 	destroyUniCache();
 

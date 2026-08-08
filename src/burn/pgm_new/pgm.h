@@ -111,8 +111,7 @@ struct SpriteCacheHead
 	unsigned short cacheIndex;
 	unsigned short wide;
 	unsigned short high;
-	unsigned short reserved;
-	
+	unsigned short totalSize;
 };
 struct SpriteCacheIndex
 {
@@ -121,5 +120,8 @@ struct SpriteCacheIndex
 };
 
 #define SPRITE_CACHE_SIZE 8192
+#define SPRITE_POOL_SIZE (2 * 1024 * 1024)
 extern SpriteCacheIndex *spriteCacheArray;
 extern unsigned int spriteCacheArrayFreeP;
+extern unsigned char *g_spriteDecodePool;
+extern unsigned int g_spritePoolAllocPtr;

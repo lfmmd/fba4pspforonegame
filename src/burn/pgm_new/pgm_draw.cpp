@@ -29,191 +29,131 @@ inline static unsigned char* getBlockSPRCol(unsigned long offset, unsigned long 
 
 #endif
 
-void __fastcall pgmOnDestroy(unsigned char* addr)
-{
-	//test use
-	//debugValue1++;
-	//panicMsg="pgmOnDestroy in";
-	SpriteCacheHead* destroyHead=(SpriteCacheHead*)addr;
-	unsigned short cacheIndex=destroyHead->cacheIndex;
+unsigned char *g_spriteDecodePool = 0;
+unsigned int g_spritePoolAllocPtr = 0;
 
-	SpriteCacheIndex *cacheIndexPtr=&spriteCacheArray[cacheIndex];
-	
-	SpriteCacheHead* head=cacheIndexPtr->src;
-	SpriteCacheHead* head2=0;
-	while(head!=0)
-	{
-		if(head==destroyHead)
-			break;
-		else
-		{
-			head2=head;
-			head=head->nextSrcPtr;
+// 独立专用环形 Sprite 缓存分配器
+inline static SpriteCacheHead* spritePoolAlloc(unsigned int size)
+{
+	if (!g_spriteDecodePool) return 0;
+
+	// 4 字节对齐
+	size = (size + 3) & ~3;
+	if (size > SPRITE_POOL_SIZE) return 0;
+
+	// 若即将超出末尾，回绕到头部并重置索引指针
+	if (g_spritePoolAllocPtr + size > SPRITE_POOL_SIZE) {
+		for (int i = 0; i < SPRITE_CACHE_SIZE; i++) {
+			spriteCacheArray[i].src = 0;
 		}
+		g_spritePoolAllocPtr = 0;
 	}
-	if(head==0) return;
-	if(head2==0)
-		cacheIndexPtr->src=head->nextSrcPtr;
-	else
-		head2->nextSrcPtr=head->nextSrcPtr;
-	
-	BoffsetHead* boffsetHead=destroyHead->sprMaskHeadPtr;
-	if	(	boffsetHead->magicChar2==0xC2&&boffsetHead->magicChar1==0xCC&&
-		(	boffsetHead->cacheIndexHigh<<8|boffsetHead->cacheIndexLow )==cacheIndex)
-	{
-		if(cacheIndexPtr->src==0)
-		{
-			unsigned char* bdat=(unsigned char*)boffsetHead;
-			unsigned int aoff=spriteCacheArray[cacheIndex].aoff;
-			bdat[0]=(aoff)&0xFF;
-			bdat[1]=(aoff>>8)&0xFF;
-			bdat[2]=(aoff>>16)&0xFF;
-			bdat[3]=aoff>>24;
-			//debugValue2++;
-		}
-	}else
-	{
-		cacheIndexPtr->src=0;
-	}
-	//test use
-	//panicMsg="pgmOnDestroy out";
+
+	unsigned char *allocPtr = g_spriteDecodePool + g_spritePoolAllocPtr;
+	g_spritePoolAllocPtr += size;
+
+	return (SpriteCacheHead*)allocPtr;
 }
 
 static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, int palt, int boffset, int flip, unsigned int xzoom, int xgrow, unsigned int yzoom, int ygrow )
 {
 	if ( boffset >= 0x1000000 ) return;
 	
-	int wideHigh= wide*high;
-	unsigned char * bdat =  getBlockSPRMask (boffset, ((wideHigh)<<1)+4);
-	if(bdat==0)	return;
+	int wideHigh = wide * high;
+	unsigned char * bdat = getBlockSPRMask (boffset, ((wideHigh)<<1)+4);
+	if (bdat == 0) return;
 	unsigned int aoff;
 	unsigned char * adat;
 	unsigned short msk;
 	unsigned char * src;
 	SpriteCacheHead* head;
-	SpriteCacheHead* head2=0;
-	bool needReCache=true;
+	SpriteCacheHead* head2 = 0;
+	bool needReCache = true;
 	unsigned int spriteCacheArrayCurrentOffset;
-	int newtiledatasize =sizeof(SpriteCacheHead)+((wideHigh)<<4);
-	BoffsetHead* boffsetHead=(BoffsetHead*)bdat;
+	int newtiledatasize = sizeof(SpriteCacheHead) + ((wideHigh)<<4);
+	BoffsetHead* boffsetHead = (BoffsetHead*)bdat;
 	
-	
-	if (boffsetHead->magicChar2==0xC2&&boffsetHead->magicChar1==0xCC)
+	if (boffsetHead->magicChar2 == 0xC2 && boffsetHead->magicChar1 == 0xCC)
 	{
-		//test use
-		//panicMsg="boffsetHead->magicChar2==0xC2 in";
-		
-		spriteCacheArrayCurrentOffset=boffsetHead->cacheIndexHigh<<8|boffsetHead->cacheIndexLow;
-		//test use
-		//panicMsg="step 1";
+		spriteCacheArrayCurrentOffset = boffsetHead->cacheIndexHigh<<8 | boffsetHead->cacheIndexLow;
 		head = spriteCacheArray[spriteCacheArrayCurrentOffset].src;
 		aoff = spriteCacheArray[spriteCacheArrayCurrentOffset].aoff;
-		//test use
-		//panicMsg="step 2";
-		while(head!=0)
+		while (head != 0)
 		{
-			if(head->wide==wide&&head->high==high)
+			if (head->wide == wide && head->high == high)
 			{
-				//test use
-				//panicMsg="step 2.1";
-				if(visitMem((unsigned long)head+cacheFileSize))
-					needReCache=false;
-				else
-					//test use
-					panicMsg="visitMem return false!";
+				needReCache = false;
 				break;
-			}else
-			{
-				//test use
-				//panicMsg="step 2.3";
-				head2=head;
-				head=head->nextSrcPtr;
-				//test use
-				//panicMsg="step 2.4";
 			}
-		}
-		//test use
-		//panicMsg="step 3";
-		if(needReCache)
-		{
-			//test use
-			//panicMsg="step 4";
-			adat= getBlockSPRCol(aoff>>1, wideHigh*12);
-			if(adat==0)	return;
-			//test use
-			//panicMsg="step 5";
-			head=(SpriteCacheHead* )mallocTemp(newtiledatasize,pgmOnDestroy);
-			if (head == 0) return;
-			//test use
-			//panicMsg="step 6";
-			if (head2 == 0)
-				spriteCacheArray[spriteCacheArrayCurrentOffset].src=head;
 			else
-				head2->nextSrcPtr=head;
+			{
+				head2 = head;
+				head = head->nextSrcPtr;
+			}
 		}
-		//test use
-		//panicMsg="boffsetHead->magicChar2==0xC2 out";
-	}else
-	{
-		//test use
-		//panicMsg="boffsetHead->magicChar2!=0xC2 in";
-		aoff = (bdat[3]<< 24 |bdat[2]<< 16 |bdat[1] << 8 |bdat[0]);
-		int i=spriteCacheArrayFreeP;
-		for(;spriteCacheArrayFreeP<SPRITE_CACHE_SIZE;spriteCacheArrayFreeP++)
+		if (needReCache)
 		{
-			if(spriteCacheArray[spriteCacheArrayFreeP].src==0)
+			adat = getBlockSPRCol(aoff>>1, wideHigh*12);
+			if (adat == 0) return;
+			head = spritePoolAlloc(newtiledatasize);
+			if (head == 0) return;
+			if (head2 == 0)
+				spriteCacheArray[spriteCacheArrayCurrentOffset].src = head;
+			else
+				head2->nextSrcPtr = head;
+		}
+	}
+	else
+	{
+		aoff = (bdat[3]<< 24 | bdat[2]<< 16 | bdat[1] << 8 | bdat[0]);
+		int i = spriteCacheArrayFreeP;
+		for (; spriteCacheArrayFreeP < SPRITE_CACHE_SIZE; spriteCacheArrayFreeP++)
+		{
+			if (spriteCacheArray[spriteCacheArrayFreeP].src == 0)
 			{
 				break;
 			}
 		}
-		if(spriteCacheArrayFreeP==SPRITE_CACHE_SIZE)
+		if (spriteCacheArrayFreeP == SPRITE_CACHE_SIZE)
 		{
-			for(spriteCacheArrayFreeP=0;spriteCacheArrayFreeP<i;spriteCacheArrayFreeP++)
+			for (spriteCacheArrayFreeP = 0; spriteCacheArrayFreeP < i; spriteCacheArrayFreeP++)
 			{
-				if(spriteCacheArray[spriteCacheArrayFreeP].src==0)
+				if (spriteCacheArray[spriteCacheArrayFreeP].src == 0)
 				{
 					break;
 				}
 			}
-			if(spriteCacheArrayFreeP==i)
+			if (spriteCacheArrayFreeP == i)
 			{
-				for(spriteCacheArrayFreeP=0;spriteCacheArrayFreeP<SPRITE_CACHE_SIZE;spriteCacheArrayFreeP++)
+				for (spriteCacheArrayFreeP = 0; spriteCacheArrayFreeP < SPRITE_CACHE_SIZE; spriteCacheArrayFreeP++)
 				{
-					spriteCacheArray[spriteCacheArrayFreeP].src=0;
+					spriteCacheArray[spriteCacheArrayFreeP].src = 0;
 				}
-				spriteCacheArrayFreeP=0;
-				mallocTemp(0x10000000,0);
-				return;
+				spriteCacheArrayFreeP = 0;
+				g_spritePoolAllocPtr = 0;
 			}
 		}
-		adat= getBlockSPRCol(aoff>>1, wideHigh*12);
-		if(adat==0)	return;
-		head=(SpriteCacheHead* )mallocTemp(newtiledatasize,pgmOnDestroy);
+		adat = getBlockSPRCol(aoff>>1, wideHigh*12);
+		if (adat == 0) return;
+		head = spritePoolAlloc(newtiledatasize);
 		if (head == 0) return;
-		spriteCacheArrayCurrentOffset=spriteCacheArrayFreeP;
+		spriteCacheArrayCurrentOffset = spriteCacheArrayFreeP;
 		spriteCacheArray[spriteCacheArrayCurrentOffset].aoff = aoff;
 		spriteCacheArray[spriteCacheArrayCurrentOffset].src = head;
 		boffsetHead->cacheIndexHigh = spriteCacheArrayCurrentOffset>>8;
 		boffsetHead->cacheIndexLow = spriteCacheArrayCurrentOffset&0xFF;
 		boffsetHead->magicChar1 = 0xCC;
 		boffsetHead->magicChar2 = 0xC2;
-			
-
-		//test use
-		//panicMsg="boffsetHead->magicChar2!=0xC2 out";
 	}
 	
-	if(needReCache)
+	if (needReCache)
 	{		
-		//test use
-		//panicMsg="needReCache in";		
-		head->wide=wide;
-		head->high=high;
-		head->sprMaskHeadPtr=boffsetHead;
-		head->cacheIndex=spriteCacheArrayCurrentOffset;
-		//test use
-		//panicMsg="needReCache step 1";
-		head->nextSrcPtr=0;
+		head->wide = wide;
+		head->high = high;
+		head->sprMaskHeadPtr = boffsetHead;
+		head->cacheIndex = spriteCacheArrayCurrentOffset;
+		head->totalSize = newtiledatasize;
+		head->nextSrcPtr = 0;
 		
 		unsigned char * dest = (unsigned char*)head+sizeof(SpriteCacheHead);
 	
