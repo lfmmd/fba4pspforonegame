@@ -181,7 +181,7 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 			{
 				for(spriteCacheArrayFreeP=0;spriteCacheArrayFreeP<SPRITE_CACHE_SIZE;spriteCacheArrayFreeP++)
 				{
-					spriteCacheArray[spriteCacheArrayFreeP].src==0;
+					spriteCacheArray[spriteCacheArrayFreeP].src=0;
 				}
 				spriteCacheArrayFreeP=0;
 				mallocTemp(0x10000000,0);
