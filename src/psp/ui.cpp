@@ -84,8 +84,8 @@ static void screenshot(const char* filename)
                 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_write_info(png_ptr, info_ptr);
-        line = (u8*)tmpBuf;         
-        vram16 = GU_FRAME_ADDR(tex_frame);
+        line = (u8*)tmpBuf;
+        vram16 = (nGameStage == 0) ? g_cachedBurnDrawBuf : GU_FRAME_ADDR(tex_frame);
         for (y = 0; y < VideoBufferHeight; y++) {
                 for (i = 0, x = 0; x < VideoBufferWidth; x++) {
                         u32 color = 0;

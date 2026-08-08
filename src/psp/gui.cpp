@@ -15,6 +15,7 @@ void * show_frame = (void *)(PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 0);
 void * draw_frame = (void *)(PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 1);
 void * work_frame = (void *)(PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 2);
 void * tex_frame  = (void *)(PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 3);
+unsigned short g_cachedBurnDrawBuf[PSP_LINE_SIZE * SCREEN_HEIGHT] __attribute__((aligned(64)));
 
 static unsigned char* list=(unsigned char*)((PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 4)|0x4000000);
 unsigned char* bgBuf=(unsigned char*)((PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 5)|0x4000000);
@@ -135,16 +136,9 @@ void exit_gui()
 
 void update_gui()
 {
-	//sceKernelDcacheWritebackRange((void*)0x4000000,PSP_LINE_SIZE * SCREEN_HEIGHT * 2*4) ;
-	//sceGuSync(0, GU_SYNC_FINISH);
 	sceGuStart(GU_DIRECT, list);
  	sceGuDrawBufferList(GU_PSM_5650, draw_frame, PSP_LINE_SIZE);
 	sceGuScissor(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-//	sceGuDisable(GU_ALPHA_TEST);
-//	sceGuTexMode(GU_PSM_5650, 0, 0, GU_FALSE);
-//	sceGuTexImage(0, 512, 512, 512, GU_FRAME_ADDR(tex_frame));
-//	sceGuTexFilter(GU_LINEAR, GU_LINEAR);
 
 	if ( nPrevStage != nGameStage ) {
 		if ( nGameStage ) {
@@ -158,22 +152,33 @@ void update_gui()
 		nPrevStage = nGameStage;
 	}
 
+	if (!nGameStage) {
+		// Fast hardware DMA copy from cached RAM to VRAM texture buffer
+		sceGuCopyImage(GU_PSM_5650, 0, 0, (VideoBufferWidth > 0 ? VideoBufferWidth : 448), (VideoBufferHeight > 0 ? VideoBufferHeight : 224), PSP_LINE_SIZE, (void*)((unsigned int)g_cachedBurnDrawBuf & 0x0FFFFFFF), 0, 0, PSP_LINE_SIZE, (void*)(((unsigned int)tex_frame) | 0x4000000));
+		sceGuTexFlush();
+	}
+
 	sceGuDrawArray(	GU_TRIANGLE_STRIP, 
 					GU_TEXTURE_16BIT | GU_COLOR_5650 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 
 					4, 0, vertices);
 
 	sceGuFinish();
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 void clear_gui_texture(int color, int w, int h)
 {
-	sceGuStart(GU_DIRECT, list);
- 	sceGuDrawBufferList(GU_PSM_5650, tex_frame, PSP_LINE_SIZE);
- 	sceGuScissor(0, 0, w, h);
-	sceGuClearColor(color);
-	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
-	sceGuFinish();
-	sceGuSync(0, GU_SYNC_FINISH);
+	int clearHeight = (h > 0 && h <= SCREEN_HEIGHT) ? h : SCREEN_HEIGHT;
+	if (color == 0) {
+		memset(g_cachedBurnDrawBuf, 0, PSP_LINE_SIZE * clearHeight * sizeof(unsigned short));
+	} else {
+		unsigned int color32 = ((unsigned short)color) | (((unsigned short)color) << 16);
+		unsigned int *p = (unsigned int *)g_cachedBurnDrawBuf;
+		int count = (PSP_LINE_SIZE * clearHeight) >> 1;
+		for (int i = 0; i < count; i++) {
+			p[i] = color32;
+		}
+	}
 }
 void configureVertices()
 {
@@ -184,6 +189,7 @@ void configureVertices()
 			sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 	} else {
 			memset(GU_FRAME_ADDR(0),0,PSP_LINE_SIZE * SCREEN_HEIGHT * 2 * 4);
+			memset(g_cachedBurnDrawBuf, 0, sizeof(g_cachedBurnDrawBuf));
 			BurnDrvGetFullSize(&VideoBufferWidth, &VideoBufferHeight);
 			sceGuTexImage(0, 512, 512, 512, GU_FRAME_ADDR(tex_frame));
 			sceGuTexFilter(GU_LINEAR, GU_LINEAR);

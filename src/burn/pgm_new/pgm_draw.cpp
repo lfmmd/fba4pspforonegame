@@ -370,9 +370,45 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 
 		}
 	}
-	} else { // zoomed rendering (xzoom/ygrow bitmask, per FBNeo)
+	} else { // zoomed rendering (optimized with X-LUT & line reuse)
+		// Precompute X-map lookup table for this sprite width & xzoom/xgrow
+		struct XPixelMap {
+			short src_x;
+			short dst_dx;
+		};
+		static XPixelMap xmap[512];
+		int xmap_count = 0;
 
-		// Y zoom loop
+		int xcnt = 0, xcntdraw_x = 0;
+		while (xcnt < w) {
+			int xzoombit = (xzoom >> (xcnt & 0x1f)) & 1;
+			int src_x = (flip & 0x01) ? (w - xcnt - 1) : xcnt;
+
+			if (xzoombit && xgrow) {
+				for (int px = 0; px < 2; px++) {
+					int dx = xpos + xcntdraw_x;
+					if (dx >= 0 && dx < 448) {
+						xmap[xmap_count].src_x = src_x;
+						xmap[xmap_count].dst_dx = dx;
+						xmap_count++;
+					}
+					xcntdraw_x++;
+				}
+			} else if (xzoombit && !xgrow) {
+				// skip this column
+			} else {
+				int dx = xpos + xcntdraw_x;
+				if (dx >= 0 && dx < 448) {
+					xmap[xmap_count].src_x = src_x;
+					xmap[xmap_count].dst_dx = dx;
+					xmap_count++;
+				}
+				xcntdraw_x++;
+			}
+			xcnt++;
+		}
+
+		// Y zoom rendering loop
 		int ycnt = 0, ycntdraw = 0;
 		while (ycnt < h) {
 			int yzoombit = (yzoom >> (ycnt & 0x1f)) & 1;
@@ -380,36 +416,34 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 			if (yzoombit && ygrow) line_repeat = 2;
 			else if (yzoombit && !ygrow) line_repeat = 0;
 
+			int src_y = (flip & 0x02) ? (h - ycnt - 1) : ycnt;
+			unsigned char *src_line = src_orig + src_y * w;
+			unsigned short *prev_dst_line = 0;
+
 			for (int r = 0; r < line_repeat; r++) {
 				int dy = ypos + ycntdraw;
 				ycntdraw++;
-				if (dy < 0 || dy >= 224) { if (dy >= 224) ycnt = h; continue; }
+				if (dy < 0 || dy >= 224) {
+					if (dy >= 224) ycnt = h;
+					continue;
+				}
 
 				unsigned short *dst_line = dst_orig + dy * PGM_WIDTH;
-				int src_y = (flip & 0x02) ? (h - ycnt - 1) : ycnt;
-				unsigned char *src_line = src_orig + src_y * w;
 
-				int xcnt = 0, xcntdraw_x = 0;
-				while (xcnt < w) {
-					int xzoombit = (xzoom >> (xcnt & 0x1f)) & 1;
-					int src_x = (flip & 0x01) ? (w - xcnt - 1) : xcnt;
-					unsigned char c = src_line[src_x];
-
-					if (xzoombit && xgrow) {
-						for (int px = 0; px < 2; px++) {
-							int dx = xpos + xcntdraw_x;
-							if (dx >= 0 && dx < 448 && c <= 0x1f)
-								dst_line[dx] = pRamCurPal[c];
-							xcntdraw_x++;
-						}
-					} else if (xzoombit && !xgrow) {
-					} else {
-						int dx = xpos + xcntdraw_x;
-						if (dx >= 0 && dx < 448 && c <= 0x1f)
-							dst_line[dx] = pRamCurPal[c];
-						xcntdraw_x++;
+				if (r == 1 && prev_dst_line != 0) {
+					// Duplicate line from previous repeated row (fast copy)
+					for (int k = 0; k < xmap_count; k++) {
+						int dx = xmap[k].dst_dx;
+						dst_line[dx] = prev_dst_line[dx];
 					}
-					xcnt++;
+				} else {
+					for (int k = 0; k < xmap_count; k++) {
+						unsigned char c = src_line[xmap[k].src_x];
+						if (c <= 0x1f) {
+							dst_line[xmap[k].dst_dx] = pRamCurPal[c];
+						}
+					}
+					prev_dst_line = dst_line;
 				}
 			}
 			ycnt++;

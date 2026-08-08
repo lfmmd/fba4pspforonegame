@@ -59,6 +59,7 @@ extern void * show_frame;
 extern void * draw_frame;
 extern void * work_frame;
 extern void * tex_frame;
+extern unsigned short g_cachedBurnDrawBuf[PSP_LINE_SIZE * SCREEN_HEIGHT] __attribute__((aligned(64)));
 extern unsigned char *bgBuf,*previewBuf,*tmpBuf;
 void init_gui();
 void exit_gui();

@@ -158,8 +158,7 @@ int main(int argc, char** argv) {
 	nBurnBpp = 2;
 	nBurnPitch  = 512 * nBurnBpp;
 	BurnHighCol = HighCol16;
-	
-	pBurnDraw = (unsigned char *) video_frame_addr(tex_frame, 0, 0);
+	pBurnDraw = (unsigned char *) g_cachedBurnDrawBuf;
 	// Auto-boot kovshp
 	for (unsigned int i = 0; i < nBurnDrvCount; i++) {
 		nBurnDrvSelect = i;
@@ -334,7 +333,7 @@ GAME_RUNNING:
 					sceKernelDelayThread(1000);
 				}
 
-				pBurnDraw = (unsigned char *) video_frame_addr(tex_frame, 0, 0);
+				pBurnDraw = (unsigned char *) g_cachedBurnDrawBuf;
 				if(gameSpeedCtrl==AUTO_FRAMESKIP)
 				{
 					if(mixbufidDiff<3)
@@ -350,14 +349,17 @@ GAME_RUNNING:
 					}
 				}
 			}
+			BurnDrvFrame();
+			if (pBurnDraw) {
 #ifdef SHOW_FPS			
-			drawString(fps, (unsigned short*)((unsigned int)GU_FRAME_ADDR(tex_frame)|0x40000000), 11, 11, R8G8B8_to_B5G6R5(0x404040));
-			drawString(fps, (unsigned short*)((unsigned int)GU_FRAME_ADDR(tex_frame)|0x40000000), 10, 10, R8G8B8_to_B5G6R5(0xffffff));
+				drawString(fps, g_cachedBurnDrawBuf, 11, 11, R8G8B8_to_B5G6R5(0x404040));
+				drawString(fps, g_cachedBurnDrawBuf, 10, 10, R8G8B8_to_B5G6R5(0xffffff));
 #endif			
+				sceKernelDcacheWritebackRange(g_cachedBurnDrawBuf, PSP_LINE_SIZE * SCREEN_HEIGHT * sizeof(unsigned short));
+				update_gui();
 				show_frame = draw_frame;
 				draw_frame = sceGuSwapBuffers();
-				update_gui();
-			BurnDrvFrame();
+			}
 			pBurnDraw = NULL;
 			
 						
