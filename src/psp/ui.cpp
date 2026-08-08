@@ -286,57 +286,91 @@ void draw_ui_main()
 			(unsigned short*)bgBuf, bgW, bgH);
 	}
 
-	drawString(LBVer, GU_FRAME_ADDR(work_frame), 10, 10, UI_COLOR);
+	// Top Sci-Fi Status Bar
+	drawStringSciFi(LBVer, GU_FRAME_ADDR(work_frame), 12, 10, SCI_COLOR_CYAN, 1, true);
 	update_status_str(buf);
-	drawString(buf, GU_FRAME_ADDR(work_frame), 470 - getDrawStringLength(buf), 10, UI_COLOR);
-	drawRect(GU_FRAME_ADDR(work_frame), 8, 28, 464, 1, UI_COLOR);
+	drawStringSciFi(buf, GU_FRAME_ADDR(work_frame), 468 - getDrawStringLength(buf), 10, SCI_COLOR_ICE, 1, true);
+	drawGlowHLine(GU_FRAME_ADDR(work_frame), 8, 28, 464, SCI_COLOR_CYAN);
 
-	int yTop = 44;
-	int itemH = 18;
+	// 3D Focus Wheel Coordinates Definition
+	static const int wheel_y[UI_VISIBLE_ITEMS]   = {  42,  64,  88, 114, 154, 180, 202 };
+	static const int wheel_x[UI_VISIBLE_ITEMS]   = { 100, 116, 130, 142, 130, 116, 100 };
+	static const unsigned short wheel_color[UI_VISIBLE_ITEMS] = {
+		SCI_COLOR_DARK, SCI_COLOR_BLUE, SCI_COLOR_ICE, SCI_COLOR_WHITE, SCI_COLOR_ICE, SCI_COLOR_BLUE, SCI_COLOR_DARK
+	};
+
 	int start = (ui_mainmenu_select - UI_HIGHLIGHT_POS + MENU_COUNT * 10) % MENU_COUNT;
 
 	for (int v = 0; v < UI_VISIBLE_ITEMS; v++) {
 		int i = (start + v) % MENU_COUNT;
+		char item_text[128];
+		
 		switch ( i ) {
 		case LOAD_GAME:
-			sprintf( buf, ui_main_menu[i], saveIndex );
+			sprintf( item_text, ui_main_menu[i], saveIndex );
 			break;
 		case SAVE_GAME:
-			sprintf( buf, ui_main_menu[i], saveIndex );
+			sprintf( item_text, ui_main_menu[i], saveIndex );
 			break;
 		case CONTROLLER:
 			if(currentInp)
-				sprintf( buf, ui_main_menu[i], currentInp );
+				sprintf( item_text, ui_main_menu[i], currentInp );
 			else
-				strcpy(buf, "Controller: ALL");
+				strcpy(item_text, "Controller: ALL");
 			break;
 		case SKIP_FRAMES:
 			if ( gameSpeedCtrl == AUTO_FRAMESKIP )
-				strcpy(buf, "Frame Skip: AUTO");
+				strcpy(item_text, "Frame Skip: AUTO");
 			else
-				sprintf( buf, ui_main_menu[i], gameSpeedCtrl );
+				sprintf( item_text, ui_main_menu[i], gameSpeedCtrl );
 			break;
 		case WIFI_GAME:
 			switch(wifiStatus)
 			{
-				case 1: sprintf( buf, ui_main_menu[i], "HOST" ); break;
-				case 2: sprintf( buf, ui_main_menu[i], "CLIENT" ); break;
-				case 3: sprintf( buf, ui_main_menu[i], "P2P" ); break;
-				default: sprintf( buf, ui_main_menu[i], "OFF" ); break;
+				case 1: sprintf( item_text, ui_main_menu[i], "HOST" ); break;
+				case 2: sprintf( item_text, ui_main_menu[i], "CLIENT" ); break;
+				case 3: sprintf( item_text, ui_main_menu[i], "P2P" ); break;
+				default: sprintf( item_text, ui_main_menu[i], "OFF" ); break;
 			}
 			break;
 		default:
-			sprintf( buf, ui_main_menu[i] );
+			sprintf( item_text, ui_main_menu[i] );
 		}
-		drawString(buf, GU_FRAME_ADDR(work_frame), 160,
-			yTop + v * itemH + 3,
-			i == EXIT_FBA ? R8G8B8_to_B5G6R5(0xff0000) : UI_COLOR);
-	}
-	/* Highlight bar fixed at center position */
-	drawRect(GU_FRAME_ADDR(work_frame), 152, yTop + UI_HIGHLIGHT_POS * itemH,
-		180, itemH, UI_COLOR, 0x40);
 
-	drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
+		if (v == UI_HIGHLIGHT_POS) {
+			// Center Focused Item: Scale 2x, Sci-Fi Chamfered Card, Neon Glow
+			sprintf(buf, "%s", item_text);
+			int text_w = getDrawStringLengthScaled(buf, 2);
+			int card_w = text_w + 32;
+			if (card_w < 220) card_w = 220;
+			int card_x = wheel_x[v] - 14;
+			int card_y = wheel_y[v];
+			int card_h = 32;
+
+			unsigned short border_c = (i == EXIT_FBA) ? SCI_COLOR_WARN : SCI_COLOR_ACCENT;
+			unsigned short fill_c   = (i == EXIT_FBA) ? R8G8B8_to_B5G6R5(0x381010) : R8G8B8_to_B5G6R5(0x0a1e38);
+			unsigned short text_c   = (i == EXIT_FBA) ? SCI_COLOR_WARN : SCI_COLOR_WHITE;
+
+			drawSciFiCard(GU_FRAME_ADDR(work_frame), card_x, card_y, card_w, card_h, border_c, fill_c, 0xa0, 6);
+			drawStringSciFi(buf, GU_FRAME_ADDR(work_frame), card_x + 16, card_y + 4, text_c, 2, true);
+		} else {
+			// Unfocused Items: Scale 1x, Smooth Arc Distance Dimming
+			int dist = v - UI_HIGHLIGHT_POS;
+			if (dist < 0) dist = -dist;
+
+			// Subtle background strip for adjacent items
+			if (dist == 1) {
+				drawRect(GU_FRAME_ADDR(work_frame), wheel_x[v] - 8, wheel_y[v] - 2, 200, 17, R8G8B8_to_B5G6R5(0x081525), 0x50);
+			}
+
+			unsigned short text_c = (i == EXIT_FBA) ? R8G8B8_to_B5G6R5(0xaa3333) : wheel_color[v];
+			drawStringSciFi(item_text, GU_FRAME_ADDR(work_frame), wheel_x[v], wheel_y[v], text_c, 1, dist <= 1);
+		}
+	}
+
+	// Bottom Sci-Fi Glow Line & Quick Navigation Hints
+	drawGlowHLine(GU_FRAME_ADDR(work_frame), 8, 230, 464, SCI_COLOR_CYAN);
+	drawStringSciFi("(O) SELECT    (X) BACK    (LEFT/RIGHT) ADJUST", GU_FRAME_ADDR(work_frame), 80, 244, SCI_COLOR_BLUE, 1, false);
 
 	if(0&&ui_mainmenu_select==LOAD_GAME&&needPreview&&nBurnDrvSelect < nBurnDrvCount)
 	{
@@ -353,6 +387,7 @@ void draw_ui_main()
 		}
 	}
 }
+
 void draw_ui_browse(bool rebuiltlist)
 {
 	unsigned int bds = nBurnDrvSelect;
@@ -379,50 +414,57 @@ void draw_ui_browse(bool rebuiltlist)
 	strcpy(buf, "PATH: ");
 	strcat(buf, ui_current_path);
 	
-	drawString(buf, GU_FRAME_ADDR(work_frame), 10, 10, UI_COLOR, 460);
-    drawRect(GU_FRAME_ADDR(work_frame), 8, 28, 464, 1, UI_COLOR);
+	drawStringSciFi(buf, GU_FRAME_ADDR(work_frame), 10, 10, SCI_COLOR_CYAN, 1, true, 460);
+    drawGlowHLine(GU_FRAME_ADDR(work_frame), 8, 28, 464, SCI_COLOR_CYAN);
 	
 	for(int i=0; i<find_rom_list_cnt; i++) {
 		char *p = getRomsFileName(i+find_rom_top);
+		int item_idx = i + find_rom_top;
+		bool is_selected = (item_idx == find_rom_select);
 		
+		int row_y = 38 + i * 19;
+		int row_x = is_selected ? 14 : 10;
+		
+		if (is_selected) {
+			drawSciFiCard(GU_FRAME_ADDR(work_frame), 6, row_y - 1, 144, 19, SCI_COLOR_ACCENT, R8G8B8_to_B5G6R5(0x0a1e38), 0x90, 3);
+		}
 		
 		if (p) {
-			switch( getRomsFileStat(i+find_rom_top) ) {
+			unsigned short text_c;
+			switch( getRomsFileStat(item_idx) ) {
 			case -2: // unsupport
 			case -3: // not working
-				drawString(p, GU_FRAME_ADDR(work_frame), 12, 44+i*18, R8G8B8_to_B5G6R5(0x808080), 180);
+				text_c = R8G8B8_to_B5G6R5(0x707070);
 				break;
-			case -1: // directry
-				//drawString("<DIR>", GU_FRAME_ADDR(work_frame), 194, 44 + i*18, fc);
+			case -1: // directory
+				text_c = SCI_COLOR_ICE;
 				break;
 			default:
-				drawString(p, GU_FRAME_ADDR(work_frame), 12, 44+i*18, UI_COLOR, 180);
+				text_c = is_selected ? SCI_COLOR_WHITE : SCI_COLOR_ICE;
 			}
+			drawStringSciFi(p, GU_FRAME_ADDR(work_frame), row_x + (is_selected ? 4 : 0), row_y + 2, text_c, 1, is_selected, 130);
 		}
-		if ((i+find_rom_top) == find_rom_select) {
-			drawRect(GU_FRAME_ADDR(work_frame), 10, 40+i*18, 140, 18, UI_COLOR, 0x40);
-		}
-		if ( find_rom_count > find_rom_list_cnt ) {
-			drawRect(GU_FRAME_ADDR(work_frame), 154, 40, 5, 18 * find_rom_list_cnt, R8G8B8_to_B5G6R5(0x807060));
-		
-			drawRect(GU_FRAME_ADDR(work_frame), 154, 
-					40 + find_rom_top * 18 * find_rom_list_cnt / find_rom_count , 5, 
-					find_rom_list_cnt * 18 * find_rom_list_cnt / find_rom_count, UI_COLOR);
-		} else
-			drawRect(GU_FRAME_ADDR(work_frame), 154, 40, 5, 18 * find_rom_list_cnt, UI_COLOR);
 
+		if ( find_rom_count > find_rom_list_cnt ) {
+			drawRect(GU_FRAME_ADDR(work_frame), 154, 38, 4, 19 * find_rom_list_cnt, R8G8B8_to_B5G6R5(0x182434), 0x80);
+			drawRect(GU_FRAME_ADDR(work_frame), 154, 
+					38 + find_rom_top * 19 * find_rom_list_cnt / find_rom_count , 4, 
+					find_rom_list_cnt * 19 * find_rom_list_cnt / find_rom_count, SCI_COLOR_ACCENT);
+		} else
+			drawRect(GU_FRAME_ADDR(work_frame), 154, 38, 4, 19 * find_rom_list_cnt, SCI_COLOR_BLUE, 0x60);
 	}
 	
-    drawRect(GU_FRAME_ADDR(work_frame), 8, 230, 464, 1, UI_COLOR);
+    drawGlowHLine(GU_FRAME_ADDR(work_frame), 8, 230, 464, SCI_COLOR_CYAN);
+	drawRect(GU_FRAME_ADDR(work_frame), 8, 234, 464, 34, R8G8B8_to_B5G6R5(0x081525), 0x80);
 
 	nBurnDrvSelect = getRomsFileStat(find_rom_select);
 
-	strcpy(buf, "Game Info: ");
+	strcpy(buf, "Game: ");
 	if ( nBurnDrvSelect < nBurnDrvCount)
 		strcat(buf, BurnDrvGetTextA( DRV_FULLNAME ) );
-    drawString(buf, GU_FRAME_ADDR(work_frame), 10, 238, UI_COLOR, 460);
+    drawStringSciFi(buf, GU_FRAME_ADDR(work_frame), 12, 237, SCI_COLOR_WHITE, 1, true, 456);
 
-	strcpy(buf, "Released by: ");
+	strcpy(buf, "Info: ");
 	if ( nBurnDrvSelect < nBurnDrvCount ) {
 		strcat(buf, BurnDrvGetTextA( DRV_MANUFACTURER ));
 		strcat(buf, " (");
@@ -431,8 +473,7 @@ void draw_ui_browse(bool rebuiltlist)
 		strcat(buf, BurnDrvGetTextA( DRV_SYSTEM ));
 		strcat(buf, " hardware)");
 	}
-    drawString(buf, GU_FRAME_ADDR(work_frame), 10, 255, UI_COLOR, 460);
-   
+    drawStringSciFi(buf, GU_FRAME_ADDR(work_frame), 12, 252, SCI_COLOR_ICE, 1, false, 456);
 
     if (needPreview&&nBurnDrvSelect < nBurnDrvCount ) {
 	    strcpy(buf,szAppCachePath);
@@ -455,9 +496,9 @@ void draw_ui_browse(bool rebuiltlist)
 		{
 			unsigned int imgW,imgH;
 			loadImage(previewBuf,buf, &imgW, &imgH);
-			drawImage(GU_FRAME_ADDR(work_frame), 160, 40, 320, 180, 
+			drawImage(GU_FRAME_ADDR(work_frame), 162, 38, 314, 184, 
 			(unsigned short*)previewBuf, imgW, imgH);
-			
+			drawCornerBracket(GU_FRAME_ADDR(work_frame), 160, 36, 318, 188, SCI_COLOR_CYAN, 10);
 		}
     }
 	nBurnDrvSelect = bds;
@@ -866,15 +907,19 @@ void ui_update_progress2(float size, const char * txt)
 	if ( txt ) ui_process_pos2 = sz;
 	else ui_process_pos2 += sz;
 	if ( ui_process_pos2 > 460 ) ui_process_pos2 = 460;
-	drawRect( GU_FRAME_ADDR(work_frame), 10, 245, ui_process_pos2, 3, R8G8B8_to_B5G6R5(0xf06050) );
+	
+	// Background groove
+	drawRect( GU_FRAME_ADDR(work_frame), 10, 245, 460, 4, R8G8B8_to_B5G6R5(0x0a1624), 0x90 );
+	// Active Sci-Fi Neon Progress
+	drawRect( GU_FRAME_ADDR(work_frame), 10, 245, ui_process_pos2, 4, SCI_COLOR_ACCENT );
 	
 	if ( txt ) {
 		if(bgIndex!=2)	
-			drawRect( GU_FRAME_ADDR(work_frame), 10, 255, 460, 13, UI_BGCOLOR );
+			drawRect( GU_FRAME_ADDR(work_frame), 10, 254, 460, 14, UI_BGCOLOR );
 		else
-			drawImage(GU_FRAME_ADDR(work_frame), 10,  255, 460, 13, 
-			(unsigned short*)(bgBuf+255*PSP_LINE_SIZE*2+10*2), 460, 13);
-		drawString(txt, GU_FRAME_ADDR(work_frame), 10, 255, UI_COLOR, 460);	
+			drawImage(GU_FRAME_ADDR(work_frame), 10,  254, 460, 14, 
+			(unsigned short*)(bgBuf+254*PSP_LINE_SIZE*2+10*2), 460, 14);
+		drawStringSciFi(txt, GU_FRAME_ADDR(work_frame), 10, 255, SCI_COLOR_CYAN, 1, true, 460);	
 	}
 
 	update_gui();

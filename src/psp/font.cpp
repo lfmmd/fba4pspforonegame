@@ -149,6 +149,63 @@ static int printChar(unsigned short *screenbuf, unsigned char c, unsigned short 
 	return w;
 }
 
+static int printCharScaled(unsigned short *screenbuf, unsigned char c, unsigned short cl, int mw, int scale, bool shadow)
+{
+	if (c > 0x7e || c < 0x20) c = '?';
+	
+	int raw_w = font12inf[c - 0x20].width;
+	int w = (scale == 2) ? (raw_w * 2) : raw_w;
+	if (w > mw) w = mw;
+
+	unsigned short * pz = &font12[font12inf[c - 0x20].offset];
+	
+	if (scale == 2) {
+		int max_i = raw_w;
+		if (max_i * 2 > mw) max_i = mw / 2;
+		
+		for (int i = 0; i < max_i; i++, pz++) {
+			unsigned short mask = *pz;
+			if (!mask) continue;
+			for (int row = 0; row < 12; row++) {
+				if (mask & (0x8000 >> row)) {
+					int px = i * 2;
+					int py = row * 2;
+					
+					// Draw shadow if requested
+					if (shadow) {
+						unsigned short *sh = screenbuf + (px + 2) + (py + 2) * 512;
+						sh[0] = SCI_COLOR_SHADOW;
+						sh[1] = SCI_COLOR_SHADOW;
+						sh[512] = SCI_COLOR_SHADOW;
+						sh[513] = SCI_COLOR_SHADOW;
+					}
+					
+					// Draw 2x2 solid pixel block
+					unsigned short *p = screenbuf + px + py * 512;
+					p[0] = cl;
+					p[1] = cl;
+					p[512] = cl;
+					p[513] = cl;
+				}
+			}
+		}
+	} else {
+		for (int i = 0; i < w; i++, pz++, screenbuf++) {
+			unsigned short mask = *pz;
+			if (!mask) continue;
+			for (int row = 0; row < 12; row++) {
+				if (mask & (0x8000 >> row)) {
+					if (shadow) {
+						screenbuf[512 * (row + 1) + 1] = SCI_COLOR_SHADOW;
+					}
+					screenbuf[512 * row] = cl;
+				}
+			}
+		}
+	}
+	return w;
+}
+
 void drawString(const char *s, unsigned short *screenbuf, int x, int y, unsigned short c, int w)
 {
     if (!w) w = 512 - x;
@@ -156,6 +213,20 @@ void drawString(const char *s, unsigned short *screenbuf, int x, int y, unsigned
 	int len = strlen(s);
     for (int i = 0; i < len; i++) {
         int tw = printChar(screenbuf, s[i], c, w);
+        screenbuf += tw;
+        w -= tw;
+        if (w <= 0) break;
+    }
+}
+
+void drawStringSciFi(const char *s, unsigned short *screenbuf, int x, int y, unsigned short c, int scale, bool shadow, int w)
+{
+    if (x < 0 || y < 0 || x >= 512 || y >= 272) return;
+    if (!w) w = 512 - x;
+	screenbuf += x + y * 512;
+	int len = strlen(s);
+    for (int i = 0; i < len; i++) {
+        int tw = printCharScaled(screenbuf, s[i], c, w, scale, shadow);
         screenbuf += tw;
         w -= tw;
         if (w <= 0) break;
@@ -174,9 +245,20 @@ int getDrawStringLength(const char *s)
     return res;
 }
 
+int getDrawStringLengthScaled(const char *s, int scale)
+{
+    int len = getDrawStringLength(s);
+    return (scale == 2) ? (len * 2) : len;
+}
 
 void drawRect(unsigned short *screenbuf, int x, int y, int w, int h, unsigned short c, unsigned char alpha)
 {
+	if (x < 0) { w += x; x = 0; }
+	if (y < 0) { h += y; y = 0; }
+	if (x + w > 512) w = 512 - x;
+	if (y + h > 272) h = 272 - y;
+	if (w <= 0 || h <= 0) return;
+
 	unsigned char r,g,b;
 	screenbuf += x + y * 512;
 	for ( ;h>0; h--, screenbuf+=512) {
@@ -189,6 +271,122 @@ void drawRect(unsigned short *screenbuf, int x, int y, int w, int h, unsigned sh
              *p = (r& 0x1f)|((g&0x3f)<<5)|((b&0x1f)<<11);
 		} 
 	}
+}
+
+void drawSciFiCard(unsigned short *screenbuf, int x, int y, int w, int h, unsigned short border_color, unsigned short fill_color, unsigned char fill_alpha, int chamfer)
+{
+	if (x < 0) { w += x; x = 0; }
+	if (y < 0) { h += y; y = 0; }
+	if (x + w > 512) w = 512 - x;
+	if (y + h > 272) h = 272 - y;
+	if (w <= 0 || h <= 0) return;
+
+	// Fill with chamfered corners
+	for (int j = 0; j < h; j++) {
+		int line_x1 = 0;
+		int line_x2 = w - 1;
+		
+		// Top-left chamfer
+		if (j < chamfer) {
+			line_x1 = chamfer - j;
+		}
+		// Bottom-right chamfer
+		if (j >= h - chamfer) {
+			line_x2 = (w - 1) - (j - (h - chamfer));
+		}
+		
+		if (line_x2 < line_x1) continue;
+		
+		unsigned short *row = screenbuf + (x + line_x1) + (y + j) * 512;
+		int row_w = line_x2 - line_x1 + 1;
+		
+		for (int i = 0; i < row_w; i++, row++) {
+			unsigned char r = ((*row & 0x1f) * (255 - fill_alpha) + (fill_color & 0x1f) * fill_alpha) / 255;
+			unsigned char g = (((*row >> 5) & 0x3f) * (255 - fill_alpha) + ((fill_color >> 5) & 0x3f) * fill_alpha) / 255;
+			unsigned char b = (((*row >> 11) & 0x1f) * (255 - fill_alpha) + ((fill_color >> 11) & 0x1f) * fill_alpha) / 255;
+			*row = (r & 0x1f) | ((g & 0x3f) << 5) | ((b & 0x1f) << 11);
+		}
+	}
+
+	// Draw borders
+	// Top border
+	for (int i = chamfer; i < w; i++) {
+		screenbuf[(x + i) + y * 512] = border_color;
+	}
+	// Bottom border
+	for (int i = 0; i < w - chamfer; i++) {
+		screenbuf[(x + i) + (y + h - 1) * 512] = border_color;
+	}
+	// Left border
+	for (int j = chamfer; j < h; j++) {
+		screenbuf[x + (y + j) * 512] = border_color;
+	}
+	// Right border
+	for (int j = 0; j < h - chamfer; j++) {
+		screenbuf[(x + w - 1) + (y + j) * 512] = border_color;
+	}
+	// Diagonal borders
+	for (int k = 0; k < chamfer; k++) {
+		screenbuf[(x + chamfer - k) + (y + k) * 512] = border_color;
+		screenbuf[((x + w - 1) - k) + ((y + h - chamfer) + k) * 512] = border_color;
+	}
+
+	// Accent Bar on left (3px wide)
+	int bar_top = y + chamfer + 2;
+	int bar_h = h - (chamfer * 2) - 4;
+	if (bar_h > 0) {
+		for (int j = 0; j < bar_h; j++) {
+			screenbuf[(x + 2) + (bar_top + j) * 512] = SCI_COLOR_ACCENT;
+			screenbuf[(x + 3) + (bar_top + j) * 512] = SCI_COLOR_ACCENT;
+		}
+	}
+}
+
+void drawGlowHLine(unsigned short *screenbuf, int x, int y, int w, unsigned short color)
+{
+	if (y < 0 || y >= 272 || x >= 512) return;
+	if (x < 0) { w += x; x = 0; }
+	if (x + w > 512) w = 512 - x;
+	if (w <= 0) return;
+
+	float half_w = w * 0.5f;
+	unsigned short *p = screenbuf + x + y * 512;
+	for (int i = 0; i < w; i++, p++) {
+		float dist = (i - half_w) / half_w;
+		float intensity = 1.0f - (dist * dist);
+		if (intensity < 0.0f) intensity = 0.0f;
+		
+		int alpha = (int)(intensity * 255.0f);
+		if (alpha <= 0) continue;
+		
+		unsigned char r = ((*p & 0x1f) * (255 - alpha) + (color & 0x1f) * alpha) / 255;
+		unsigned char g = (((*p >> 5) & 0x3f) * (255 - alpha) + ((color >> 5) & 0x3f) * alpha) / 255;
+		unsigned char b = (((*p >> 11) & 0x1f) * (255 - alpha) + ((color >> 11) & 0x1f) * alpha) / 255;
+		*p = (r & 0x1f) | ((g & 0x3f) << 5) | ((b & 0x1f) << 11);
+	}
+}
+
+void drawCornerBracket(unsigned short *screenbuf, int x, int y, int w, int h, unsigned short color, int corner_len)
+{
+	if (corner_len > w / 2) corner_len = w / 2;
+	if (corner_len > h / 2) corner_len = h / 2;
+	if (corner_len <= 0) return;
+
+	// Top-left
+	for (int i = 0; i < corner_len; i++) screenbuf[(x + i) + y * 512] = color;
+	for (int j = 0; j < corner_len; j++) screenbuf[x + (y + j) * 512] = color;
+
+	// Top-right
+	for (int i = 0; i < corner_len; i++) screenbuf[(x + w - 1 - i) + y * 512] = color;
+	for (int j = 0; j < corner_len; j++) screenbuf[(x + w - 1) + (y + j) * 512] = color;
+
+	// Bottom-left
+	for (int i = 0; i < corner_len; i++) screenbuf[(x + i) + (y + h - 1) * 512] = color;
+	for (int j = 0; j < corner_len; j++) screenbuf[x + (y + h - 1 - j) * 512] = color;
+
+	// Bottom-right
+	for (int i = 0; i < corner_len; i++) screenbuf[(x + w - 1 - i) + (y + h - 1) * 512] = color;
+	for (int j = 0; j < corner_len; j++) screenbuf[(x + w - 1) + (y + h - 1 - j) * 512] = color;
 }
 
 void drawImage(unsigned short *screenbuf, int x, int y, int w,int h, unsigned short *imgBuf, int imgW, int imgH)
