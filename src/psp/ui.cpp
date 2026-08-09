@@ -41,7 +41,7 @@ short wifiStatus=0;
 short saveIndex=0;
 short gameScreenWidth=SCREEN_WIDTH, gameScreenHeight=SCREEN_HEIGHT;
 bool enableJoyStick=true;
-char LBVer[]="FinalBurn Alpha for PSP KOVSHP101";
+char LBVer[]="FinalBurn Alpha for PSP KOVSHP101 (Test v2)";
 static int find_rom_count = 0;
 static int find_rom_select = 0;
 static int find_rom_top = 0;
