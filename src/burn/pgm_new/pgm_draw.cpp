@@ -669,7 +669,7 @@ static void pgm_tile_tx()
 
 static void pgm_tile_bg()
 {
-	int tileno, flipx;
+	int tileno, flipx, flipy;
 	signed short scroll_x = (signed short)RamVReg[0x3000 / 2];
 	signed short scroll_y = (signed short)RamVReg[0x2000 / 2];
 
@@ -700,6 +700,7 @@ static void pgm_tile_bg()
 
 			unsigned int *pal = &RamCurPal[0x400 + ((tiledata >> 12) & 0x3E0)];
 			flipx = (tiledata >> 22) & 0x01;
+			flipy = (tiledata >> 23) & 0x01;
 
 			unsigned int *d = (unsigned int*)getBlockTile(tileno * 640, 640);
 			if (d == 0) return;
@@ -707,93 +708,186 @@ static void pgm_tile_bg()
 			unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
 
 			if (x >= 0 && x < (448 - 32) && y >= 0 && y < (224 - 32)) {
-				if (flipx) {
-					// flip x , not flip y
-					for (int k = 0; k < 32; k++) {
-						dd = d[0];
-						ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
-						dd |= d[1] << 2;
-						ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[1] >> 3;
-						ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
-						dd |= d[2] << 4;
-						ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[2] >> 1;
-						ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
-						dd |= d[3] << 1;
-						ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[3] >> 4;
-						ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
-						dd |= d[4] << 3;
-						ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[4] >> 2;
-						ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
+				if (flipy) {
+					p += 31 * PGM_WIDTH;
+					if (flipx) {
+						// flip x , flip y
+						for (int k = 0; k < 32; k++) {
+							dd = d[0];
+							ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
+							dd |= d[1] << 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[1] >> 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
+							dd |= d[2] << 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[2] >> 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
+							dd |= d[3] << 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[3] >> 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
+							dd |= d[4] << 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[4] >> 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
 
-						d += 5;
-						p += PGM_WIDTH;
+							d += 5;
+							p -= PGM_WIDTH;
+						}
+					} else {
+						// not flip x , flip y
+						for (int k = 0; k < 32; k++) {
+							dd = d[0];
+							ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
+							dd |= d[1] << 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[1] >> 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
+							dd |= d[2] << 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[2] >> 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
+							dd |= d[3] << 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[3] >> 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
+							dd |= d[4] << 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[4] >> 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
+
+							d += 5;
+							p -= PGM_WIDTH;
+						}
 					}
 				} else {
-					// not flip x , not flip y
-					for (int k = 0; k < 32; k++) {
-						dd = d[0];
-						ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
-						dd |= d[1] << 2;
-						ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[1] >> 3;
-						ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
-						dd |= d[2] << 4;
-						ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[2] >> 1;
-						ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
-						dd |= d[3] << 1;
-						ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[3] >> 4;
-						ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
-						dd |= d[4] << 3;
-						ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[4] >> 2;
-						ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
-						ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
+					if (flipx) {
+						// flip x , not flip y
+						for (int k = 0; k < 32; k++) {
+							dd = d[0];
+							ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
+							dd |= d[1] << 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[1] >> 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
+							dd |= d[2] << 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[2] >> 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
+							dd |= d[3] << 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[3] >> 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
+							dd |= d[4] << 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[4] >> 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
 
-						d += 5;
-						p += PGM_WIDTH;
+							d += 5;
+							p += PGM_WIDTH;
+						}
+					} else {
+						// not flip x , not flip y
+						for (int k = 0; k < 32; k++) {
+							dd = d[0];
+							ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[1] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[2] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[3] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[4] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[5] = pal[ddd]; dd >>= 5;
+							dd |= d[1] << 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[6] = pal[ddd]; dd = d[1] >> 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[7] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[8] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[9] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[10] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[11] = pal[ddd]; dd >>= 5;
+							dd |= d[2] << 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[12] = pal[ddd]; dd = d[2] >> 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[13] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[14] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[15] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[16] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[17] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[18] = pal[ddd]; dd >>= 5;
+							dd |= d[3] << 1;
+							ddd = dd & 0x1f; if (ddd != 31) p[19] = pal[ddd]; dd = d[3] >> 4;
+							ddd = dd & 0x1f; if (ddd != 31) p[20] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[21] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[22] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[23] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[24] = pal[ddd]; dd >>= 5;
+							dd |= d[4] << 3;
+							ddd = dd & 0x1f; if (ddd != 31) p[25] = pal[ddd]; dd = d[4] >> 2;
+							ddd = dd & 0x1f; if (ddd != 31) p[26] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[27] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[28] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[29] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[30] = pal[ddd]; dd >>= 5;
+							ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
+
+							d += 5;
+							p += PGM_WIDTH;
+						}
 					}
 				}
 			} else {
