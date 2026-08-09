@@ -680,15 +680,15 @@ static void pgm_tile_bg()
 
 	for (int dy = 0; dy < 10; dy++) {
 		int my = (first_my + dy) & 0x3F;
-		int y = my * 32 - scroll_y;
-		if (y <= (224 - 2048)) y += 2048;
+		int y = (my * 32 - scroll_y) & 2047;
+		if (y > 224) y -= 2048;
 		if (y <= -32 || y >= 224) continue;
 
 		unsigned int *row_tiledata = RamBg + (my << 6);
 		for (int dx = 0; dx < 17; dx++) {
 			int mx = (first_mx + dx) & 0x3F;
-			int x = mx * 32 - scroll_x;
-			if (x <= (448 - 2048)) x += 2048;
+			int x = (mx * 32 - scroll_x) & 2047;
+			if (x > 448) x -= 2048;
 			if (x <= -32 || x >= 448) continue;
 
 			unsigned int tiledata = row_tiledata[mx];
