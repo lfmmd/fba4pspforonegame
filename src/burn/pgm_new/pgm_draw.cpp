@@ -902,7 +902,7 @@ static void pgm_tile_bg()
 					}
 				}
 			} else {
-				unsigned char * d_ptr = d;
+				unsigned int * d_ptr = d;
 				int d_step = 5;
 				if (flipy) {
 					d_ptr = d + 31 * 5;
