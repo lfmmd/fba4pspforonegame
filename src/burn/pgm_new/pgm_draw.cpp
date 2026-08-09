@@ -58,6 +58,7 @@ inline static SpriteCacheHead* spritePoolAlloc(unsigned int size)
 			spriteCacheArray[i].src = 0;
 		}
 		g_spritePoolAllocPtr = 0;
+		spriteCacheArrayFreeP = 0;
 	}
 
 	unsigned char *allocPtr = g_spriteDecodePool + g_spritePoolAllocPtr;
