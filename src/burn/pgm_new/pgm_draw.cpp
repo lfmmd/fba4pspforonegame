@@ -30,68 +30,27 @@ inline static unsigned char* getBlockSPRCol(unsigned long offset, unsigned long 
 #endif
 
 unsigned char *g_spriteDecodePool = 0;
-static unsigned int g_currentZone = 0;
-static unsigned int g_zoneAllocPtr = 0;
+unsigned int g_spritePoolAllocPtr = 0;
 
-// 安全清理指定 Zone 内的 Sprite 节点，并将 SPRMask ROM 前 4 字节精确还原为原始 aoff
-static void clearZoneSprites(unsigned int targetZone)
-{
-	if (!g_spriteDecodePool) return;
-	unsigned char *zoneStart = g_spriteDecodePool + targetZone * SPRITE_ZONE_SIZE;
-	unsigned char *zoneEnd = zoneStart + SPRITE_ZONE_SIZE;
-
-	for (int i = 0; i < SPRITE_CACHE_SIZE; i++) {
-		SpriteCacheHead *head = spriteCacheArray[i].src;
-		SpriteCacheHead *prev = 0;
-		while (head != 0) {
-			unsigned char *headAddr = (unsigned char *)head;
-			SpriteCacheHead *next = head->nextSrcPtr;
-			if (headAddr >= zoneStart && headAddr < zoneEnd) {
-				// 该节点位于待清理区域，检查并还原其 SPRMask ROM 元数据
-				BoffsetHead *bHead = head->sprMaskHeadPtr;
-				if (bHead && bHead->magicChar2 == 0xC2 && bHead->magicChar1 == 0xCC &&
-					(unsigned int)(bHead->cacheIndexHigh << 8 | bHead->cacheIndexLow) == (unsigned int)i)
-				{
-					unsigned char *bdat = (unsigned char *)bHead;
-					unsigned int aoff = spriteCacheArray[i].aoff;
-					bdat[0] = aoff & 0xFF;
-					bdat[1] = (aoff >> 8) & 0xFF;
-					bdat[2] = (aoff >> 16) & 0xFF;
-					bdat[3] = (aoff >> 24) & 0xFF;
-				}
-				// 从链表安全摘除
-				if (prev == 0) {
-					spriteCacheArray[i].src = next;
-				} else {
-					prev->nextSrcPtr = next;
-				}
-			} else {
-				prev = head;
-			}
-			head = next;
-		}
-	}
-}
-
-// 独立双区 Sprite 缓存分配器
+// 独立专用环形 Sprite 缓存分配器
 inline static SpriteCacheHead* spritePoolAlloc(unsigned int size)
 {
 	if (!g_spriteDecodePool) return 0;
 
 	// 4 字节对齐
 	size = (size + 3) & ~3;
-	if (size > SPRITE_ZONE_SIZE) return 0;
+	if (size > SPRITE_POOL_SIZE) return 0;
 
-	// 若当前 Zone 空间不足，安全切换到下一个 Zone 并清理该 Zone 的旧 Sprite
-	if (g_zoneAllocPtr + size > SPRITE_ZONE_SIZE) {
-		unsigned int nextZone = (g_currentZone + 1) % SPRITE_ZONE_COUNT;
-		clearZoneSprites(nextZone);
-		g_currentZone = nextZone;
-		g_zoneAllocPtr = 0;
+	// 若即将超出末尾，回绕到头部并重置索引指针
+	if (g_spritePoolAllocPtr + size > SPRITE_POOL_SIZE) {
+		for (int i = 0; i < SPRITE_CACHE_SIZE; i++) {
+			spriteCacheArray[i].src = 0;
+		}
+		g_spritePoolAllocPtr = 0;
 	}
 
-	unsigned char *allocPtr = g_spriteDecodePool + g_currentZone * SPRITE_ZONE_SIZE + g_zoneAllocPtr;
-	g_zoneAllocPtr += size;
+	unsigned char *allocPtr = g_spriteDecodePool + g_spritePoolAllocPtr;
+	g_spritePoolAllocPtr += size;
 
 	return (SpriteCacheHead*)allocPtr;
 }
@@ -166,12 +125,12 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 			}
 			if (spriteCacheArrayFreeP == i)
 			{
-				for (unsigned int z = 0; z < SPRITE_ZONE_COUNT; z++) {
-					clearZoneSprites(z);
+				for (spriteCacheArrayFreeP = 0; spriteCacheArrayFreeP < SPRITE_CACHE_SIZE; spriteCacheArrayFreeP++)
+				{
+					spriteCacheArray[spriteCacheArrayFreeP].src = 0;
 				}
 				spriteCacheArrayFreeP = 0;
-				g_currentZone = 0;
-				g_zoneAllocPtr = 0;
+				g_spritePoolAllocPtr = 0;
 			}
 		}
 		adat = getBlockSPRCol(aoff>>1, wideHigh*12);
@@ -638,63 +597,70 @@ static void pgm_tile_tx()
     p = palette
     f = flip
 */
-	int tileno, colour;
-	int mx = -1, my = 0, x, y;
 	unsigned int *pal = &RamCurPal[0x800];
-	
-	const unsigned int * finish = RamTx + 0x800;
-	for (unsigned int * tiledata = RamTx; tiledata < finish; tiledata++) {
-		tileno = (*tiledata >> 0) & 0xFFFF;
-		colour = (*tiledata >> 13) & 0x1F0;
-		
-		if (tileno > 0xbfff) { tileno -= 0xc000; tileno += 0x20000; }
-		
-		mx++;
-		if (mx == 64) {
-			mx = 0;
-			my++;
-		}
-		
-		if (tileno == 0) continue;
+	signed short scroll_x = (signed short)RamVReg[0x6000 / 2];
+	signed short scroll_y = (signed short)RamVReg[0x5000 / 2];
 
-		x = mx * 8 - (signed short)RamVReg[0x6000 / 2];
-		y = my * 8 - (signed short)RamVReg[0x5000 / 2];
+	int start_my = (scroll_y - 7) / 8;
+	if (start_my < 0) start_my = 0;
+	int end_my = (scroll_y + 224 + 7) / 8;
+	if (end_my > 32) end_my = 32;
 
-		if (x <= -8 || x >= 448 || y <= -8 || y >= 224) continue;
+	int start_mx = (scroll_x - 7) / 8;
+	if (start_mx < 0) start_mx = 0;
+	int end_mx = (scroll_x + 448 + 7) / 8;
+	if (end_mx > 64) end_mx = 64;
 
-		unsigned char *d = getBlockTile(tileno << 5, 32);
-		if (d == 0) return;
-		unsigned short * p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
-		unsigned int v;
+	for (int my = start_my; my < end_my; my++) {
+		int y = my * 8 - scroll_y;
+		if (y <= -8 || y >= 224) continue;
 
-		if (x >= 0 && x < 440 && y >= 0 && y < 216) {
-			for (int k = 0; k < 8; k++) {
-				v = d[0] & 0xf; if (v != 15) p[0] = pal[v | colour];
-				v = d[0] >> 4;  if (v != 15) p[1] = pal[v | colour];
-				v = d[1] & 0xf; if (v != 15) p[2] = pal[v | colour];
-				v = d[1] >> 4;  if (v != 15) p[3] = pal[v | colour];
-				v = d[2] & 0xf; if (v != 15) p[4] = pal[v | colour];
-				v = d[2] >> 4;  if (v != 15) p[5] = pal[v | colour];
-				v = d[3] & 0xf; if (v != 15) p[6] = pal[v | colour];
-				v = d[3] >> 4;  if (v != 15) p[7] = pal[v | colour];
-				d += 4;
-				p += PGM_WIDTH;
-			}
-		} else {
-			for (int k = 0; k < 8; k++) {
-				if ((y + k) >= 224) break;
-				if ((y + k) >= 0) {
-					v = d[0] & 0xf; if (v != 15 && (x + 0) >= 0 && (x + 0) < 448) p[0] = pal[v | colour];
-					v = d[0] >> 4;  if (v != 15 && (x + 1) >= 0 && (x + 1) < 448) p[1] = pal[v | colour];
-					v = d[1] & 0xf; if (v != 15 && (x + 2) >= 0 && (x + 2) < 448) p[2] = pal[v | colour];
-					v = d[1] >> 4;  if (v != 15 && (x + 3) >= 0 && (x + 3) < 448) p[3] = pal[v | colour];
-					v = d[2] & 0xf; if (v != 15 && (x + 4) >= 0 && (x + 4) < 448) p[4] = pal[v | colour];
-					v = d[2] >> 4;  if (v != 15 && (x + 5) >= 0 && (x + 5) < 448) p[5] = pal[v | colour];
-					v = d[3] & 0xf; if (v != 15 && (x + 6) >= 0 && (x + 6) < 448) p[6] = pal[v | colour];
-					v = d[3] >> 4;  if (v != 15 && (x + 7) >= 0 && (x + 7) < 448) p[7] = pal[v | colour];
+		unsigned int *row_tiledata = RamTx + (my << 6);
+		for (int mx = start_mx; mx < end_mx; mx++) {
+			unsigned int tiledata = row_tiledata[mx];
+			int tileno = tiledata & 0xFFFF;
+			if (tileno == 0) continue;
+
+			int colour = (tiledata >> 13) & 0x1F0;
+			if (tileno > 0xbfff) { tileno -= 0xc000; tileno += 0x20000; }
+
+			int x = mx * 8 - scroll_x;
+			if (x <= -8 || x >= 448) continue;
+
+			unsigned char *d = getBlockTile(tileno << 5, 32);
+			if (d == 0) return;
+			unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
+			unsigned int v;
+
+			if (x >= 0 && x < 440 && y >= 0 && y < 216) {
+				for (int k = 0; k < 8; k++) {
+					v = d[0] & 0xf; if (v != 15) p[0] = pal[v | colour];
+					v = d[0] >> 4;  if (v != 15) p[1] = pal[v | colour];
+					v = d[1] & 0xf; if (v != 15) p[2] = pal[v | colour];
+					v = d[1] >> 4;  if (v != 15) p[3] = pal[v | colour];
+					v = d[2] & 0xf; if (v != 15) p[4] = pal[v | colour];
+					v = d[2] >> 4;  if (v != 15) p[5] = pal[v | colour];
+					v = d[3] & 0xf; if (v != 15) p[6] = pal[v | colour];
+					v = d[3] >> 4;  if (v != 15) p[7] = pal[v | colour];
+					d += 4;
+					p += PGM_WIDTH;
 				}
-				d += 4;
-				p += PGM_WIDTH;
+			} else {
+				for (int k = 0; k < 8; k++) {
+					if ((y + k) >= 224) break;
+					if ((y + k) >= 0) {
+						v = d[0] & 0xf; if (v != 15 && (x + 0) >= 0 && (x + 0) < 448) p[0] = pal[v | colour];
+						v = d[0] >> 4;  if (v != 15 && (x + 1) >= 0 && (x + 1) < 448) p[1] = pal[v | colour];
+						v = d[1] & 0xf; if (v != 15 && (x + 2) >= 0 && (x + 2) < 448) p[2] = pal[v | colour];
+						v = d[1] >> 4;  if (v != 15 && (x + 3) >= 0 && (x + 3) < 448) p[3] = pal[v | colour];
+						v = d[2] & 0xf; if (v != 15 && (x + 4) >= 0 && (x + 4) < 448) p[4] = pal[v | colour];
+						v = d[2] >> 4;  if (v != 15 && (x + 5) >= 0 && (x + 5) < 448) p[5] = pal[v | colour];
+						v = d[3] & 0xf; if (v != 15 && (x + 6) >= 0 && (x + 6) < 448) p[6] = pal[v | colour];
+						v = d[3] >> 4;  if (v != 15 && (x + 7) >= 0 && (x + 7) < 448) p[7] = pal[v | colour];
+					}
+					d += 4;
+					p += PGM_WIDTH;
+				}
 			}
 		}
 	}
@@ -703,48 +669,46 @@ static void pgm_tile_tx()
 
 static void pgm_tile_bg()
 {
-	int tileno, flipx, flipy;
-	int mx = -1, my = 0, x, y;
-	
-	const unsigned int * finish = RamBg + 0x1000;
-	for (unsigned int * tiledata = RamBg; tiledata < finish; tiledata++) {
-		tileno = (*tiledata) & 0xFFFF;
-		
-		if (tileno > 0x7ff)
-			tileno += 0x1000;	 // Tiles 0x800+ come from the GAME Roms
-	
-		mx++;
-		if (mx == 64) {
-			mx = 0;
-			my++;
-		}
-		
-		if (tileno == 0) continue;
+	int tileno, flipx;
+	signed short scroll_x = (signed short)RamVReg[0x3000 / 2];
+	signed short scroll_y = (signed short)RamVReg[0x2000 / 2];
 
-		unsigned int *pal = &RamCurPal[0x400 + ((*tiledata >> 12) & 0x3E0)];
-		
-		flipx = (*tiledata >> 22) & 0x01;
-		flipy = (*tiledata >> 23) & 0x01;
+	// Direct Viewport Indexing: Map size is 64x64 tiles (2048x2048 pixels)
+	// Screen visible bounds: [0, 448) x [0, 224)
+	int first_my = ((scroll_y - 31) >> 5) & 0x3F;
+	int first_mx = ((scroll_x - 31) >> 5) & 0x3F;
 
-		x = mx * 32 - (signed short)RamVReg[0x3000 / 2];
-		if (x <= (448 - 64 * 32)) x += (64 * 32);
-		
-		y = my * 32 - (signed short)RamVReg[0x2000 / 2];
-		if (y <= (224 - 64 * 32)) y += (64 * 32);
-		
-		if (x <= -32 || x >= 448 || y <= -32 || y >= 224) 
-			continue;
+	for (int dy = 0; dy < 10; dy++) {
+		int my = (first_my + dy) & 0x3F;
+		int y = my * 32 - scroll_y;
+		if (y <= (224 - 2048)) y += 2048;
+		if (y <= -32 || y >= 224) continue;
 
-		unsigned int *d = (unsigned int*)getBlockTile(tileno * 640, 640);
-		if (d == 0) return;
-		unsigned int dd, ddd;
-		unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
+		unsigned int *row_tiledata = RamBg + (my << 6);
+		for (int dx = 0; dx < 17; dx++) {
+			int mx = (first_mx + dx) & 0x3F;
+			int x = mx * 32 - scroll_x;
+			if (x <= (448 - 2048)) x += 2048;
+			if (x <= -32 || x >= 448) continue;
 
-		if (x >= 0 && x < (448 - 32) && y >= 0 && y < (224 - 32)) {
-			if (flipy) {
-				p += 31 * PGM_WIDTH;
+			unsigned int tiledata = row_tiledata[mx];
+			tileno = tiledata & 0xFFFF;
+			if (tileno == 0) continue;
+
+			if (tileno > 0x7ff)
+				tileno += 0x1000;	 // Tiles 0x800+ come from the GAME Roms
+
+			unsigned int *pal = &RamCurPal[0x400 + ((tiledata >> 12) & 0x3E0)];
+			flipx = (tiledata >> 22) & 0x01;
+
+			unsigned int *d = (unsigned int*)getBlockTile(tileno * 640, 640);
+			if (d == 0) return;
+			unsigned int dd, ddd;
+			unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
+
+			if (x >= 0 && x < (448 - 32) && y >= 0 && y < (224 - 32)) {
 				if (flipx) {
-					// flip x, flip y
+					// flip x , not flip y
 					for (int k = 0; k < 32; k++) {
 						dd = d[0];
 						ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
@@ -785,10 +749,10 @@ static void pgm_tile_bg()
 						ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
 
 						d += 5;
-						p -= PGM_WIDTH;
+						p += PGM_WIDTH;
 					}
 				} else {
-					// not flip x, flip y
+					// not flip x , not flip y
 					for (int k = 0; k < 32; k++) {
 						dd = d[0];
 						ddd = dd & 0x1f; if (ddd != 31) p[0] = pal[ddd]; dd >>= 5;
@@ -829,58 +793,12 @@ static void pgm_tile_bg()
 						ddd = dd & 0x1f; if (ddd != 31) p[31] = pal[ddd]; dd >>= 5;
 
 						d += 5;
-						p -= PGM_WIDTH;
+						p += PGM_WIDTH;
 					}
 				}
 			} else {
 				if (flipx) {
-					// flip x, not flip y
-					for (int k = 0; k < 32; k++) {
-						if ((y + k) >= 224) break;
-						if ((y + k) >= 0) {
-							dd = d[0];
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 31) >= 0 && (x + 31) < 448) p[31] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 30) >= 0 && (x + 30) < 448) p[30] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 29) >= 0 && (x + 29) < 448) p[29] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 28) >= 0 && (x + 28) < 448) p[28] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 27) >= 0 && (x + 27) < 448) p[27] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 26) >= 0 && (x + 26) < 448) p[26] = pal[ddd]; dd >>= 5;
-							dd |= d[1] << 2;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 25) >= 0 && (x + 25) < 448) p[25] = pal[ddd]; dd = d[1] >> 3;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 24) >= 0 && (x + 24) < 448) p[24] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 23) >= 0 && (x + 23) < 448) p[23] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 22) >= 0 && (x + 22) < 448) p[22] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 21) >= 0 && (x + 21) < 448) p[21] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 20) >= 0 && (x + 20) < 448) p[20] = pal[ddd]; dd >>= 5;
-							dd |= d[2] << 4;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 19) >= 0 && (x + 19) < 448) p[19] = pal[ddd]; dd = d[2] >> 1;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 18) >= 0 && (x + 18) < 448) p[18] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 17) >= 0 && (x + 17) < 448) p[17] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 16) >= 0 && (x + 16) < 448) p[16] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 15) >= 0 && (x + 15) < 448) p[15] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 14) >= 0 && (x + 14) < 448) p[14] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 13) >= 0 && (x + 13) < 448) p[13] = pal[ddd]; dd >>= 5;
-							dd |= d[3] << 1;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 12) >= 0 && (x + 12) < 448) p[12] = pal[ddd]; dd = d[3] >> 4;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 11) >= 0 && (x + 11) < 448) p[11] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 10) >= 0 && (x + 10) < 448) p[10] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 9) >= 0 && (x + 9) < 448) p[9] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 8) >= 0 && (x + 8) < 448) p[8] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 7) >= 0 && (x + 7) < 448) p[7] = pal[ddd]; dd >>= 5;
-							dd |= d[4] << 3;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 6) >= 0 && (x + 6) < 448) p[6] = pal[ddd]; dd = d[4] >> 2;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 5) >= 0 && (x + 5) < 448) p[5] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 4) >= 0 && (x + 4) < 448) p[4] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 3) >= 0 && (x + 3) < 448) p[3] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 2) >= 0 && (x + 2) < 448) p[2] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 1) >= 0 && (x + 1) < 448) p[1] = pal[ddd]; dd >>= 5;
-							ddd = dd & 0x1f; if (ddd != 31 && (x + 0) >= 0 && (x + 0) < 448) p[0] = pal[ddd]; dd >>= 5;
-						}
-						d += 5;
-						p += PGM_WIDTH;
-					}
-				} else {
-					// not flip x, not flip y
+					// flip x , not flip y
 					for (int k = 0; k < 32; k++) {
 						if ((y + k) >= 224) break;
 						if ((y + k) >= 0) {
