@@ -443,20 +443,11 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 
 				unsigned short *dst_line = dst_orig + dy * PGM_WIDTH;
 
-				if (r == 1 && prev_dst_line != 0) {
-					// Duplicate line from previous repeated row (fast copy)
-					for (int k = 0; k < xmap_count; k++) {
-						int dx = xmap[k].dst_dx;
-						dst_line[dx] = prev_dst_line[dx];
+				for (int k = 0; k < xmap_count; k++) {
+					unsigned char c = src_line[xmap[k].src_x];
+					if (c <= 0x1f) {
+						dst_line[xmap[k].dst_dx] = pRamCurPal[c];
 					}
-				} else {
-					for (int k = 0; k < xmap_count; k++) {
-						unsigned char c = src_line[xmap[k].src_x];
-						if (c <= 0x1f) {
-							dst_line[xmap[k].dst_dx] = pRamCurPal[c];
-						}
-					}
-					prev_dst_line = dst_line;
 				}
 			}
 			ycnt++;
