@@ -139,6 +139,17 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 			{
 				for (spriteCacheArrayFreeP = 0; spriteCacheArrayFreeP < SPRITE_CACHE_SIZE; spriteCacheArrayFreeP++)
 				{
+					SpriteCacheHead* c_head = spriteCacheArray[spriteCacheArrayFreeP].src;
+					while (c_head != 0) {
+						BoffsetHead* bHead = c_head->sprMaskHeadPtr;
+						unsigned char* b_dat = (unsigned char*)bHead;
+						unsigned int a_off = spriteCacheArray[spriteCacheArrayFreeP].aoff;
+						b_dat[0] = a_off & 0xFF;
+						b_dat[1] = (a_off >> 8) & 0xFF;
+						b_dat[2] = (a_off >> 16) & 0xFF;
+						b_dat[3] = (a_off >> 24) & 0xFF;
+						c_head = c_head->nextSrcPtr;
+					}
 					spriteCacheArray[spriteCacheArrayFreeP].src = 0;
 				}
 				spriteCacheArrayFreeP = 0;
