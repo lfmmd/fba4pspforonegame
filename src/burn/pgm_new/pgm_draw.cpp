@@ -621,70 +621,63 @@ static void pgm_tile_tx()
     f = flip
 */
 	unsigned int *pal = &RamCurPal[0x800];
-	signed short scroll_x = (signed short)RamVReg[0x6000 / 2];
-	signed short scroll_y = (signed short)RamVReg[0x5000 / 2];
+	int mx=-1, my=0, x, y;
 
-	int start_my = (scroll_y - 7) / 8;
-	if (start_my < 0) start_my = 0;
-	int end_my = (scroll_y + 224 + 7) / 8;
-	if (end_my > 32) end_my = 32;
+	const unsigned int * finish = RamTx + 0x800;
+	for (unsigned int * tiledata = RamTx; tiledata < finish; tiledata++) {
+		int tileno = (*tiledata >>  0) & 0xFFFF;
+		int colour = (*tiledata >> 13) & 0x1F0;
+		int flipyx = (*tiledata >> 22) & 0x03;
+		
+		if (tileno > 0xbfff) { tileno -= 0xc000 ; tileno += 0x20000; }
+		
+		mx++;
+		if (mx == 64) {
+			mx = 0;
+			my++;
+		}
+		
+		if (tileno == 0) continue;
 
-	int start_mx = (scroll_x - 7) / 8;
-	if (start_mx < 0) start_mx = 0;
-	int end_mx = (scroll_x + 448 + 7) / 8;
-	if (end_mx > 64) end_mx = 64;
+		x = mx * 8 - (signed short)RamVReg[0x6000 / 2];
+		y = my * 8 - (signed short)RamVReg[0x5000 / 2];
 
-	for (int my = start_my; my < end_my; my++) {
-		int y = my * 8 - scroll_y;
-		if (y <= -8 || y >= 224) continue;
+		if ( x<=-8 || x>=448 || y<=-8 || y>= 224 ) continue;
 
-		unsigned int *row_tiledata = RamTx + (my << 6);
-		for (int mx = start_mx; mx < end_mx; mx++) {
-			unsigned int tiledata = row_tiledata[mx];
-			int tileno = tiledata & 0xFFFF;
-			if (tileno == 0) continue;
+		unsigned char *d = getBlockTile(tileno<<5,32);
+		if(d==0) return;
+		unsigned short * p = (unsigned short *) pBurnDraw + y * PGM_WIDTH + x;
+		unsigned int v;
 
-			int colour = (tiledata >> 13) & 0x1F0;
-			if (tileno > 0xbfff) { tileno -= 0xc000; tileno += 0x20000; }
-
-			int x = mx * 8 - scroll_x;
-			if (x <= -8 || x >= 448) continue;
-
-			unsigned char *d = getBlockTile(tileno << 5, 32);
-			if (d == 0) return;
-			unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
-			unsigned int v;
-
-			if (x >= 0 && x < 440 && y >= 0 && y < 216) {
-				for (int k = 0; k < 8; k++) {
-					v = d[0] & 0xf; if (v != 15) p[0] = pal[v | colour];
-					v = d[0] >> 4;  if (v != 15) p[1] = pal[v | colour];
-					v = d[1] & 0xf; if (v != 15) p[2] = pal[v | colour];
-					v = d[1] >> 4;  if (v != 15) p[3] = pal[v | colour];
-					v = d[2] & 0xf; if (v != 15) p[4] = pal[v | colour];
-					v = d[2] >> 4;  if (v != 15) p[5] = pal[v | colour];
-					v = d[3] & 0xf; if (v != 15) p[6] = pal[v | colour];
-					v = d[3] >> 4;  if (v != 15) p[7] = pal[v | colour];
-					d += 4;
-					p += PGM_WIDTH;
-				}
-			} else {
-				for (int k = 0; k < 8; k++) {
-					if ((y + k) >= 224) break;
-					if ((y + k) >= 0) {
-						v = d[0] & 0xf; if (v != 15 && (x + 0) >= 0 && (x + 0) < 448) p[0] = pal[v | colour];
-						v = d[0] >> 4;  if (v != 15 && (x + 1) >= 0 && (x + 1) < 448) p[1] = pal[v | colour];
-						v = d[1] & 0xf; if (v != 15 && (x + 2) >= 0 && (x + 2) < 448) p[2] = pal[v | colour];
-						v = d[1] >> 4;  if (v != 15 && (x + 3) >= 0 && (x + 3) < 448) p[3] = pal[v | colour];
-						v = d[2] & 0xf; if (v != 15 && (x + 4) >= 0 && (x + 4) < 448) p[4] = pal[v | colour];
-						v = d[2] >> 4;  if (v != 15 && (x + 5) >= 0 && (x + 5) < 448) p[5] = pal[v | colour];
-						v = d[3] & 0xf; if (v != 15 && (x + 6) >= 0 && (x + 6) < 448) p[6] = pal[v | colour];
-						v = d[3] >> 4;  if (v != 15 && (x + 7) >= 0 && (x + 7) < 448) p[7] = pal[v | colour];
-					}
-					d += 4;
-					p += PGM_WIDTH;
-				}
-			}
+		if ( x >=0 && x < 440 && y >= 0 && y < 216) {
+			for (int k=0;k<8;k++) {
+				v = d[0] & 0xf;	if (v != 15) p[0] = pal[ v | colour ];
+ 				v = d[0] >> 4;	if (v != 15) p[1] = pal[ v | colour ];
+ 				v = d[1] & 0xf;	if (v != 15) p[2] = pal[ v | colour ];
+ 				v = d[1] >> 4;	if (v != 15) p[3] = pal[ v | colour ];
+ 				v = d[2] & 0xf;	if (v != 15) p[4] = pal[ v | colour ];
+ 				v = d[2] >> 4;	if (v != 15) p[5] = pal[ v | colour ];
+ 				v = d[3] & 0xf;	if (v != 15) p[6] = pal[ v | colour ];
+ 				v = d[3] >> 4;	if (v != 15) p[7] = pal[ v | colour ];
+ 				d += 4;
+ 				p += PGM_WIDTH;
+ 			}
+		} else {
+			for (int k=0;k<8;k++) {
+				if ((y+k) >= 224) break;
+				if ((y+k) >= 0) {
+	 				v = d[0] & 0xf;	if (v != 15 && (x + 0) >= 0 && (x + 0)<448) p[0] = pal[ v | colour ];
+	 				v = d[0] >> 4;	if (v != 15 && (x + 1) >= 0 && (x + 1)<448) p[1] = pal[ v | colour ];
+	 				v = d[1] & 0xf;	if (v != 15 && (x + 2) >= 0 && (x + 2)<448) p[2] = pal[ v | colour ];
+	 				v = d[1] >> 4;	if (v != 15 && (x + 3) >= 0 && (x + 3)<448) p[3] = pal[ v | colour ];
+	 				v = d[2] & 0xf;	if (v != 15 && (x + 4) >= 0 && (x + 4)<448) p[4] = pal[ v | colour ];
+	 				v = d[2] >> 4;	if (v != 15 && (x + 5) >= 0 && (x + 5)<448) p[5] = pal[ v | colour ];
+	 				v = d[3] & 0xf;	if (v != 15 && (x + 6) >= 0 && (x + 6)<448) p[6] = pal[ v | colour ];
+	 				v = d[3] >> 4;	if (v != 15 && (x + 7) >= 0 && (x + 7)<448) p[7] = pal[ v | colour ];
+ 				}
+ 				d += 4;
+ 				p += PGM_WIDTH;
+ 			}
 		}
 	}
 }
@@ -693,44 +686,43 @@ static void pgm_tile_tx()
 static void pgm_tile_bg()
 {
 	int tileno, flipx, flipy;
-	signed short scroll_x = (signed short)RamVReg[0x3000 / 2];
-	signed short scroll_y = (signed short)RamVReg[0x2000 / 2];
+	int mx=-1, my=0, x, y;
+	
+	const unsigned int * finish = RamBg + 0x1000;
+	for (unsigned int * tiledata = RamBg; tiledata < finish; tiledata ++) {
+		tileno = (*tiledata) & 0xFFFF;
+		
+		if (tileno > 0x7ff)
+			tileno += 0x1000;	 // Tiles 0x800+ come from the GAME Roms
+	
+		mx++;
+		if (mx == 64) {
+			mx = 0;
+			my++;
+		}
+		
+		if (tileno == 0) continue;
 
-	// Direct Viewport Indexing: Map size is 64x64 tiles (2048x2048 pixels)
-	// Screen visible bounds: [0, 448) x [0, 224)
-	int first_my = ((scroll_y - 31) >> 5) & 0x3F;
-	int first_mx = ((scroll_x - 31) >> 5) & 0x3F;
+		unsigned int *pal = &RamCurPal[0x400 + ((*tiledata >> 12)&0x3E0)];
+		
+		flipx = (*tiledata >> 22) & 0x01;
+		flipy = (*tiledata >> 23) & 0x01;
 
-	for (int dy = 0; dy < 10; dy++) {
-		int my = (first_my + dy) & 0x3F;
-		int y = (my * 32 - scroll_y) & 2047;
-		if (y > 224) y -= 2048;
-		if (y <= -32 || y >= 224) continue;
+		x = mx * 32 - (signed short)RamVReg[0x3000 / 2];
+		if (x <= (448 - 64 * 32)) x += (64 * 32);
+		
+		y = my * 32 - (signed short)RamVReg[0x2000 / 2];
+		if (y <= (224 - 64 * 32)) y += (64 * 32);
+		
+		if ( x<=-32 || x>=448 || y<=-32 || y>= 224 ) 
+			continue;
 
-		unsigned int *row_tiledata = RamBg + (my << 6);
-		for (int dx = 0; dx < 17; dx++) {
-			int mx = (first_mx + dx) & 0x3F;
-			int x = (mx * 32 - scroll_x) & 2047;
-			if (x > 448) x -= 2048;
-			if (x <= -32 || x >= 448) continue;
+		unsigned int * d = (unsigned int*)getBlockTile(tileno * 640,640);
+		if(d==0) return;
+		unsigned int dd, ddd;
+		unsigned short * p = (unsigned short *) pBurnDraw + y * PGM_WIDTH + x;
 
-			unsigned int tiledata = row_tiledata[mx];
-			tileno = tiledata & 0xFFFF;
-			if (tileno == 0) continue;
-
-			if (tileno > 0x7ff)
-				tileno += 0x1000;	 // Tiles 0x800+ come from the GAME Roms
-
-			unsigned int *pal = &RamCurPal[0x400 + ((tiledata >> 12) & 0x3E0)];
-			flipx = (tiledata >> 22) & 0x01;
-			flipy = (tiledata >> 23) & 0x01;
-
-			unsigned int *d = (unsigned int*)getBlockTile(tileno * 640, 640);
-			if (d == 0) return;
-			unsigned int dd, ddd;
-			unsigned short *p = (unsigned short *)pBurnDraw + y * PGM_WIDTH + x;
-
-			if (x >= 0 && x < (448 - 32) && y >= 0 && y < (224 - 32)) {
+		if (x >= 0 && x < (448 - 32) && y >= 0 && y < (224 - 32)) {
 				if (flipy) {
 					p += 31 * PGM_WIDTH;
 					if (flipx) {
@@ -1013,7 +1005,6 @@ static void pgm_tile_bg()
 				}
 			}
 		}
-	}
 }
 
 
