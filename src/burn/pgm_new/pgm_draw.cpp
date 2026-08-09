@@ -109,10 +109,28 @@ static void pgm_drawsprite_new_zoomed(int wide, int high, int xpos, int ypos, in
 			if (adat == 0) return;
 			head = spritePoolAlloc(newtiledatasize);
 			if (head == 0) return;
-			if (head2 == 0)
+			
+			if (boffsetHead->magicChar2 != 0xC2 || boffsetHead->magicChar1 != 0xCC)
+			{
+				for (; spriteCacheArrayFreeP < SPRITE_CACHE_SIZE; spriteCacheArrayFreeP++)
+				{
+					if (spriteCacheArray[spriteCacheArrayFreeP].src == 0) break;
+				}
+				spriteCacheArrayCurrentOffset = spriteCacheArrayFreeP;
+				spriteCacheArray[spriteCacheArrayCurrentOffset].aoff = aoff;
 				spriteCacheArray[spriteCacheArrayCurrentOffset].src = head;
+				boffsetHead->cacheIndexHigh = spriteCacheArrayCurrentOffset>>8;
+				boffsetHead->cacheIndexLow = spriteCacheArrayCurrentOffset&0xFF;
+				boffsetHead->magicChar1 = 0xCC;
+				boffsetHead->magicChar2 = 0xC2;
+			}
 			else
-				head2->nextSrcPtr = head;
+			{
+				if (head2 == 0)
+					spriteCacheArray[spriteCacheArrayCurrentOffset].src = head;
+				else
+					head2->nextSrcPtr = head;
+			}
 		}
 	}
 	else
