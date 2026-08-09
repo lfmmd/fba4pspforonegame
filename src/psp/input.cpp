@@ -109,12 +109,20 @@ void loadDefaultInput()
 	  			}
 			}else if(p = strstr(IniLine, "gameSpeedCtrl"))
 			{
-				p = strstr(p, "0x");
-				if(p==0||p[2]=='\0')
-					continue;
-				int value=hex2int(p[2]);
-				if(value>=0&&value<=AUTO_FRAMESKIP)
-					gameSpeedCtrl=value;
+				char* p_hex = strstr(p, "0x");
+				if(p_hex!=0&&p_hex[2]!='\0') {
+					int value=hex2int(p_hex[2]);
+					if(value>=0&&value<=AUTO_FRAMESKIP)
+						gameSpeedCtrl=value;
+				} else {
+					p += 13; // length of "gameSpeedCtrl"
+					while(*p && (*p == ' ' || *p == '=')) p++;
+					if (*p >= '0' && *p <= '9') {
+						int value = *p - '0';
+						if(value>=0&&value<=AUTO_FRAMESKIP)
+							gameSpeedCtrl=value;
+					}
+				}
 			}
 			else if(p = strstr(IniLine, "hotButtons"))
 			{
@@ -317,12 +325,20 @@ else
 	  			}
 			}else if(p = strstr(IniLine, "gameSpeedCtrl"))
 			{
-				p = strstr(p, "0x");
-				if(p==0||p[2]=='\0')
-					continue;
-				int value=hex2int(p[2]);
-				if(value>=0&&value<=AUTO_FRAMESKIP)
-					gameSpeedCtrl=value;
+				char* p_hex = strstr(p, "0x");
+				if(p_hex!=0&&p_hex[2]!='\0') {
+					int value=hex2int(p_hex[2]);
+					if(value>=0&&value<=AUTO_FRAMESKIP)
+						gameSpeedCtrl=value;
+				} else {
+					p += 13; // length of "gameSpeedCtrl"
+					while(*p && (*p == ' ' || *p == '=')) p++;
+					if (*p >= '0' && *p <= '9') {
+						int value = *p - '0';
+						if(value>=0&&value<=AUTO_FRAMESKIP)
+							gameSpeedCtrl=value;
+					}
+				}
 			}
 			else if(p = strstr(IniLine, "hotButtons"))
 			{
